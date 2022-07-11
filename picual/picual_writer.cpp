@@ -83,33 +83,37 @@ void _dump_int(Writer* w, const unsigned char branch, long int value) {
   };
 }
 
-bool _check_refr(Writer* w, PyObject* obj, unsigned int& refr_index) {
-  refr_index = w->refrs[obj];
-  if (refr_index == 0) {
-    refr_index = w->refr_count;
-    w->refrs[obj] = refr_index;
-    w->refr_count++;
+bool _check_point(Writer* w, PyObject* obj, unsigned int& point_index) {
+  point_index = w->points[obj];
+  if (point_index == 0) {
+    point_index = w->point_count;
+    w->points[obj] = point_index;
+    w->point_count++;
     return false;
   } else
     return true;
-}
+};
+
+bool _check_refr(Writer* w, PyObject* obj, unsigned int& refr_id) {
+  refr_id = refr_ids[obj];
+  return refr_id != 0;
+};
 
 void _dump_branch(Writer* w, PyObject* container, unsigned int& index, const unsigned int size, py_get_function get, PyObject* obj) {
 
   // start
   unsigned int r_index = 0;
+  unsigned int refr_id = 0;
 
   // none
-  if (obj == Py_None) {
+  if (obj == Py_None)
     _dump_num<unsigned char>(w, TYPE_NONE, 1);
-  }
 
   // bools
-  else if (obj == Py_True) {
+  else if (obj == Py_True)
     _dump_num<unsigned char>(w, TYPE_TRUE, 1);
-  } else if (obj == Py_False) {
+  else if (obj == Py_False)
     _dump_num<unsigned char>(w, TYPE_FALSE, 1);
-  }
 
   // integers
   else if (PyLong_Check(obj)) {
@@ -121,27 +125,34 @@ void _dump_branch(Writer* w, PyObject* container, unsigned int& index, const uns
     double value = PyFloat_AsDouble(obj);
     _dump_num<unsigned char>(w, TYPE_DOUBLE, 1);
     _dump_num<double>(w, value, 8);
+  }
 
   // string
-  } else if (PyUnicode_Check(obj)) {
+  else if (PyUnicode_Check(obj)) {
     const char* value = (const char*)PyUnicode_DATA(obj);
     unsigned int length = PyUnicode_GET_LENGTH(obj);
     _dump_length(w, TYPE_SMALL_STRING, length);
     w->write(value, length);
+  }
 
   // bytes
-  } else if (PyBytes_Check(obj)) {
+  else if (PyBytes_Check(obj)) {
     const char* value = PyBytes_AsString(obj);
     unsigned int length = PyBytes_GET_SIZE(obj);
     _dump_length(w, TYPE_SMALL_BYTES, length);
     w->write(value, length);
+  }
 
   // refr
-  } else if (_check_refr(w, obj, r_index)) {
-    _dump_length(w, TYPE_SMALL_REFR, r_index);
+  else if (_check_refr(w, obj, refr_id))
+    _dump_length(w, TYPE_SMALL_REFR, refr_id);
+
+  // point
+  else if (_check_point(w, obj, r_index))
+    _dump_length(w, TYPE_SMALL_POINT, r_index);
 
   // list
-  } else if (PyList_Check(obj)) {
+  else if (PyList_Check(obj)) {
     unsigned int length = PyList_Size(obj);
     _dump_length(w, TYPE_SMALL_LIST, length);
     unsigned int i_index = 0;
@@ -176,7 +187,6 @@ void _dump_branch(Writer* w, PyObject* container, unsigned int& index, const uns
       _dump_branch(w, nullptr, d_index, 0, nullptr, d_key);
       _dump_branch(w, nullptr, d_index, 0, nullptr, d_value);
     };
-
   }
 
   // check classes

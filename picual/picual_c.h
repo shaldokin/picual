@@ -29,8 +29,8 @@ class Writer {
     std::unordered_map<std::string, unsigned int> classes;
     unsigned int class_count = 1;
 
-    std::unordered_map<PyObject*, unsigned int> refrs;
-    unsigned int refr_count = 1;
+    std::unordered_map<PyObject*, unsigned int> points;
+    unsigned int point_count = 1;
 
     PyObject* obj = Py_None;
 
@@ -61,7 +61,7 @@ class Reader {
     std::unordered_map<unsigned int, std::string> class_names;
     unsigned int class_count = 1;
 
-    std::vector<PyObject*> refrs;
+    std::vector<PyObject*> points;
 
     Reader(const char type);
     ~Reader();
@@ -76,6 +76,13 @@ void _load_next(Reader* r, const unsigned char c_type, PyObject*& cont, unsigned
 // util
 PyObject* _dumps(PyObject* obj);
 PyObject* _loads(PyObject* data);
+
+// references
+std::unordered_map<unsigned int, PyObject*> refr_objs;
+std::unordered_map<PyObject*, unsigned int> refr_ids;
+unsigned int refr_count = 1;
+
+void _store_refr(PyObject* obj);
 
 // integration
 PyObject* eq_name;

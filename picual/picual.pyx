@@ -10,6 +10,7 @@ cdef extern from "picual_c.cpp":
     _dumps(obj)
     _loads(data)
     void _init(get_class_name, pickle_dump_func, pickle_load_func, datetime_class, pack_datetime_func, unpack_timedelta, timedelta_class, pack_timedelta_func, unpack_timedelta_func, unpack_object_func)
+    void _store_refr(obj)
 
 # util
 cpdef get_obj_from_refr(str name):
@@ -63,13 +64,18 @@ cpdef pack_timedelta(obj):
 cpdef unpack_timedelta(obj):
     return datetime.timedelta(seconds=obj)
 
+# utility
+cpdef store_refr(obj):
+  _store_refr(obj)
+  return obj
+
+
 # initiate
 datetime_class = datetime.datetime
 timedelta_class = datetime.timedelta
 pickle_dump_func = pickle.dumps
 pickle_load_func = pickle.loads
 unpack_datetime = datetime.datetime.fromtimestamp
-
 
 cpdef get_class_name(obj):
     return obj.__class__.__module__ + '.' + obj.__class__.__name__

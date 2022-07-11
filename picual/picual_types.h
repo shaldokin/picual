@@ -84,8 +84,14 @@
 #define TYPE_MED_IS_REPEAT 56
 #define TYPE_LONG_IS_REPEAT 57
 
+// point
+#define TYPE_SMALL_POINT 58
+#define TYPE_SHORT_POINT 59
+#define TYPE_MED_POINT 60
+#define TYPE_LONG_POINT 61
+
 // refr
-#define TYPE_SMALL_REFR 58
-#define TYPE_SHORT_REFR 59
-#define TYPE_MED_REFR 60
-#define TYPE_LONG_REFR 61
+#define TYPE_SMALL_REFR 62
+#define TYPE_SHORT_REFR 63
+#define TYPE_MED_REFR 64
+#define TYPE_LONG_REFR 65

@@ -29,6 +29,12 @@ PyObject* _loads(PyObject* py_data) {
   return l_obj;
 }
 
+// references
+void _store_refr(PyObject* obj) {
+  refr_ids[obj] = refr_count;
+  refr_objs[refr_count] = obj;
+  refr_count++;
+};
 
 // integration
 void _init(PyObject* get_class_name_func_, PyObject* pickle_dump_func_, PyObject* pickle_load_func_, PyObject* datetime_class_, PyObject* pack_datetime_func_, PyObject* unpack_datetime_func_, PyObject* timedelta_class_, PyObject* pack_timedelta_func_, PyObject* unpack_timedelta_func_, PyObject* unpack_object_func_) {

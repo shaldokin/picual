@@ -110,7 +110,7 @@ PyObject* _load_from_branch(Reader* r, const unsigned char branch) {
   else if (branch >= TYPE_SMALL_LIST && branch <= TYPE_LONG_LIST) {
     unsigned int i_size = _load_length(r, branch, TYPE_SMALL_LIST);
     PyObject* i_out = PyList_New(i_size);
-    r->refrs.push_back(i_out);
+    r->points.push_back(i_out);
     unsigned int i_index = 0;
     while (i_index < i_size)
       _load_next(r, TYPE_SMALL_LIST, i_out, i_index);
@@ -118,7 +118,7 @@ PyObject* _load_from_branch(Reader* r, const unsigned char branch) {
   } else if (branch >= TYPE_SMALL_TUPLE && branch <= TYPE_LONG_TUPLE) {
     unsigned int i_size = _load_length(r, branch, TYPE_SMALL_TUPLE);
     PyObject* i_out = PyTuple_New(i_size);
-    r->refrs.push_back(i_out);
+    r->points.push_back(i_out);
     unsigned int i_index = 0;
     while (i_index < i_size)
       _load_next(r, TYPE_SMALL_TUPLE, i_out, i_index);
@@ -128,7 +128,7 @@ PyObject* _load_from_branch(Reader* r, const unsigned char branch) {
   // dict
   else if (branch >= TYPE_SMALL_DICT && branch <= TYPE_LONG_DICT) {
     PyObject* d_out = PyDict_New();
-    r->refrs.push_back(d_out);
+    r->points.push_back(d_out);
     unsigned int d_size = _load_length(r, branch, TYPE_SMALL_DICT);
     PyObject* d_key;
     PyObject* d_value;
@@ -146,13 +146,13 @@ PyObject* _load_from_branch(Reader* r, const unsigned char branch) {
     PyObject* ts_value = PyLong_FromLong(_load_num<unsigned int>(r, 4));
     PyTuple_SetItem(unpack_datetime_func_args, 0, ts_value);
     PyObject* dt_out = PyObject_CallObject(unpack_datetime_func, unpack_datetime_func_args);
-    r->refrs.push_back(dt_out);
+    r->points.push_back(dt_out);
     return dt_out;
   } else if (branch == TYPE_PRECISE_DATETIME) {
     PyObject* ts_value = PyFloat_FromDouble(_load_num<double>(r, 8));
     PyTuple_SetItem(unpack_datetime_func_args, 0, ts_value);
     PyObject* dt_out = PyObject_CallObject(unpack_datetime_func, unpack_datetime_func_args);
-    r->refrs.push_back(dt_out);
+    r->points.push_back(dt_out);
     return dt_out;
   }
 
@@ -161,13 +161,13 @@ PyObject* _load_from_branch(Reader* r, const unsigned char branch) {
     PyObject* td_value = PyLong_FromLong(_load_num<double>(r, 8));
     PyTuple_SetItem(unpack_timedelta_func_args, 0, td_value);
     PyObject* td_out = PyObject_CallObject(unpack_timedelta_func, unpack_timedelta_func_args);
-    r->refrs.push_back(td_out);
+    r->points.push_back(td_out);
     return td_out;
   } else if (branch >= TYPE_SMALL_TIMEDELTA && branch <= TYPE_LONG_TIMEDELTA) {
     PyObject* td_value = PyLong_FromLong(_load_length(r, branch, TYPE_SMALL_TIMEDELTA));
     PyTuple_SetItem(unpack_timedelta_func_args, 0, td_value);
     PyObject* td_out = PyObject_CallObject(unpack_timedelta_func, unpack_timedelta_func_args);
-    r->refrs.push_back(td_out);
+    r->points.push_back(td_out);
     return td_out;
   }
 
@@ -190,7 +190,7 @@ PyObject* _load_from_branch(Reader* r, const unsigned char branch) {
 
     // finished!
     PyObject* o_out = PyObject_CallObject(unpack_object_func, unpack_object_func_args);
-    r->refrs.push_back(o_out);
+    r->points.push_back(o_out);
     return o_out;
 
   }
@@ -204,14 +204,20 @@ PyObject* _load_from_branch(Reader* r, const unsigned char branch) {
     PyTuple_SetItem(pickle_load_func_args, 0, p_bytes);
     PyObject* p_obj = PyObject_CallObject(pickle_load_func, pickle_load_func_args);
     free((void*)str_val);
-    r->refrs.push_back(p_obj);
+    r->points.push_back(p_obj);
     return p_obj;
   }
 
   // refr
   else if (branch >= TYPE_SMALL_REFR && branch <= TYPE_LONG_REFR) {
-    unsigned int r_index = _load_length(r, branch, TYPE_SMALL_REFR);
-    return r->refrs[r_index - 1];
+    unsigned int r_id = _load_length(r, branch, TYPE_SMALL_REFR);
+    return refr_objs[r_id];
+  }
+
+  // point
+  else if (branch >= TYPE_SMALL_POINT && branch <= TYPE_LONG_POINT) {
+    unsigned int r_index = _load_length(r, branch, TYPE_SMALL_POINT);
+    return r->points[r_index - 1];
   }
 
 }
