@@ -1,0 +1,91 @@
+
+// singletons
+#define TYPE_NONE 1
+#define TYPE_TRUE 2
+#define TYPE_FALSE 3
+
+// repeat
+#define TYPE_SMALL_REPEAT 4
+#define TYPE_SHORT_REPEAT 5
+#define TYPE_MED_REPEAT 6
+#define TYPE_LONG_REPEAT 7
+
+// integers
+#define TYPE_BYTE 8
+#define TYPE_UBYTE 9
+#define TYPE_SHORT 10
+#define TYPE_USHORT 11
+#define TYPE_INT 12
+#define TYPE_UINT 13
+#define TYPE_LONG 14
+#define TYPE_ULONG 15
+
+// floats
+#define TYPE_FLOAT 16
+#define TYPE_DOUBLE 17
+
+// string
+#define TYPE_SMALL_STRING 18
+#define TYPE_SHORT_STRING 19
+#define TYPE_MED_STRING 20
+#define TYPE_LONG_STRING 21
+
+// bytes
+#define TYPE_SMALL_BYTES 22
+#define TYPE_SHORT_BYTES 23
+#define TYPE_MED_BYTES 24
+#define TYPE_LONG_BYTES 25
+
+// list
+#define TYPE_SMALL_LIST 26
+#define TYPE_SHORT_LIST 27
+#define TYPE_MED_LIST 28
+#define TYPE_LONG_LIST 29
+
+// tuple
+#define TYPE_SMALL_TUPLE 30
+#define TYPE_SHORT_TUPLE 31
+#define TYPE_MED_TUPLE 32
+#define TYPE_LONG_TUPLE 33
+
+// dict
+#define TYPE_SMALL_DICT 34
+#define TYPE_SHORT_DICT 35
+#define TYPE_MED_DICT 36
+#define TYPE_LONG_DICT 37
+
+// datetime
+#define TYPE_DATETIME 38
+#define TYPE_PRECISE_DATETIME 39
+
+// timedelta
+#define TYPE_PRECISE_TIMEDELTA 40
+#define TYPE_SMALL_TIMEDELTA 41
+#define TYPE_SHORT_TIMEDELTA 42
+#define TYPE_MED_TIMEDELTA 43
+#define TYPE_LONG_TIMEDELTA 44
+
+// pickled
+#define TYPE_SMALL_PICKLED 45
+#define TYPE_SHORT_PICKLED 46
+#define TYPE_MED_PICKLED 47
+#define TYPE_LONG_PICKLED 48
+
+// obj
+#define TYPE_DEFINE_CLASS 49
+#define TYPE_SMALL_OBJECT 50
+#define TYPE_SHORT_OBJECT 51
+#define TYPE_MED_OBJECT 52
+#define TYPE_LONG_OBJECT 53
+
+// (is) repeat
+#define TYPE_SMALL_IS_REPEAT 54
+#define TYPE_SHORT_IS_REPEAT 55
+#define TYPE_MED_IS_REPEAT 56
+#define TYPE_LONG_IS_REPEAT 57
+
+// refr
+#define TYPE_SMALL_REFR 58
+#define TYPE_SHORT_REFR 59
+#define TYPE_MED_REFR 60
+#define TYPE_LONG_REFR 61

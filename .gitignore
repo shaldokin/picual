@@ -1,0 +1,10 @@
+__pycache__
+*.pyc
+*.so
+*.pyd
+test.py
+venv
+.idea
+*.DS_Store
+picual/picual.cpp
+build
