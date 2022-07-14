@@ -1,49 +1,285 @@
 
-// construction / destruction
-Reader::Reader(const char type) {
-  this->type = type;
+// construction
+void Reader::reset() {};
+
+BuffReader::BuffReader() {};
+BuffReader::BuffReader(const char* buff) {
+  this->buff = buff;
 };
-Reader::~Reader() {};
 
+BuffReaderGen::BuffReaderGen(const char* buff) {
+  this->o_buff = buff;
+  this->is_gen = true;
+  this->_init();
+};
 
-// reading
-const char* Reader::read(const unsigned int size) {
-  auto o_buff = (char*)malloc(size);
-  if (this->type == R_FROM_BUFF) {
-    memcpy(o_buff, this->buff, size);
-    this->buff += size;
+void BuffReaderGen::_init() {
+
+  // set buffer to beginning
+  this->buff = this->o_buff;
+  this->g_complete = 0;
+  this->g_type = TYPE_NONE;
+
+  // reset points
+  this->point_count = 1;
+  this->points = std::unordered_map<void*, unsigned int>();
+  this->points_from_indices = std::unordered_map<unsigned int, PyObject*>();
+
+  // detect generator type
+  PyObject* l_obj = Py_None;
+  this->add_point(Py_None);
+  unsigned char branch = read_num<unsigned char>(this, 1);
+  if (branch >= TYPE_SMALL_LIST && branch <= TYPE_LONG_LIST) {
+    this->g_length = read_length(this, branch, TYPE_SMALL_LIST);
+    this->g_index = 0;
+    this->g_type = TYPE_SMALL_LIST;
+   } else if (branch >= TYPE_SMALL_TUPLE && branch <= TYPE_LONG_TUPLE) {
+    this->g_length = read_length(this, branch, TYPE_SMALL_TUPLE);
+    this->g_index = 0;
+    this->g_type = TYPE_SMALL_LIST;
+   } else if (branch >= TYPE_SMALL_DICT && branch <= TYPE_LONG_DICT) {
+    this->g_length = read_length(this, branch, TYPE_SMALL_DICT);
+    this->g_index = 0;
+    this->g_type = TYPE_SMALL_DICT;
   } else
-    this->stream->read(o_buff, size);
-  return (const char*)o_buff;
+    this->is_wrong_type = 1;
+
+  // finished!
+  this->g_last_type = this->g_type;
+
 };
 
-template <class i_type>
-i_type _load_num(Reader* r, const unsigned int size) {
-    i_type* o_buff = (i_type*)r->read(size);
-    i_type o_val = *o_buff;
-    free(o_buff);
-    return o_val;
+void BuffReaderGen::reset() {
+  this->_init();
 };
 
-unsigned int _load_length(Reader* r, const unsigned char branch, const unsigned char type) {
-  if (branch == type)
-    return _load_num<unsigned char>(r, 1);
-  else if (branch == type + 1)
-    return _load_num<unsigned short>(r, 2);
-  else if (branch == type + 2)
-    return _load_num<unsigned int>(r, 4);
+// points
+void Reader::add_point(PyObject* obj, const unsigned int defp) {
+  unsigned int p_index = this->points[obj];
+  if (p_index == 0) {
+    if (defp == 0) {
+      p_index = this->point_count;
+      this->point_count++;
+    } else
+      p_index = defp;
+    Py_INCREF(obj);
+    this->points[obj] = p_index;
+    this->points_from_indices[p_index] = obj;
+  };
+};
+
+// read
+unsigned int Reader::get_class(const char* class_name) {
+  unsigned int c_id = classes[class_name];
+  if (c_id == 0) {
+    c_id = this->class_count;
+    class_names[c_id] = class_name;
+    this->class_count++;
+  };
+  return c_id;
+};
+
+void Reader::read(char* buff, const unsigned int size) {};
+
+void BuffReader::read(char* buff, const unsigned int size) {
+  memcpy(buff, this->buff, size);
+  this->buff += size;
+};
+
+PyObject* Reader::read_obj() {
+  PyObject* r_obj = Py_None;
+  unsigned int r_index = 0;
+  read_next(this, false, 0, r_obj, r_index);
+  return r_obj;
+};
+
+// general
+void add_obj_to_reader(PyObject* obj, Reader* r, const bool is_gen, const unsigned char c_type, PyObject*& cont, unsigned int& index) {
+
+  // start
+  r->last = obj;
+  Py_INCREF(obj);
+
+  // add to list
+  if (c_type == TYPE_SMALL_LIST && !is_gen)
+    PyList_SetItem(cont, index, obj);
+
+    // add to tuple
+  else if (c_type == TYPE_SMALL_TUPLE && !is_gen)
+    PyTuple_SetItem(cont, index, obj);
+
+  // normal
   else
-    return _load_num<unsigned long int>(r, 8);
+    cont = obj;
+
+  // finished
+  index++;
+
 };
 
-void _load_str(const char*& str, unsigned int& str_len, Reader* r, const unsigned char branch, const unsigned char type) {
-  str_len = _load_length(r, branch, type);
-  str = r->read(str_len);
-  str = (const char*)realloc((void*)str, str_len + 1);
+unsigned int read_length(Reader* r, const unsigned char branch, const unsigned char type) {
+  if (branch == type)
+    return read_num<unsigned char>(r, 1);
+  else if (branch == type + 1)
+    return read_num<unsigned short>(r, 2);
+  else if (branch == type + 2)
+    return read_num<unsigned int>(r, 4);
+  else
+    return read_num<unsigned long int>(r, 8);
+};
+
+void read_next(Reader* r, const bool is_gen, const unsigned char c_type, PyObject*& cont, unsigned int& index) {
+
+  // get branch
+  unsigned char branch = read_num<unsigned char>(r, 1);
+
+  // class definition?
+  if (branch == TYPE_DEFINE_CLASS) {
+    unsigned char c_len = read_num<unsigned char>(r, 1);
+    char* c_name = (char*)malloc(c_len + 1);
+    r->read(c_name, c_len);
+    c_name[c_len] = 0;
+    r->get_class(c_name);
+    read_next(r, is_gen, c_type, cont, index);
+    free(c_name);
+  }
+
+  // repeat
+  else if (branch >= TYPE_SMALL_REPEAT && branch <= TYPE_LONG_REPEAT) {
+
+    // start
+    BuffReaderGen* gen;
+    unsigned int r_length = read_length(r, branch, TYPE_SMALL_REPEAT);
+    if (is_gen) {
+      gen = (BuffReaderGen*)r;
+      gen->g_repeat = r_length - 1;
+      gen->g_type = TYPE_SMALL_REPEAT;
+    };
+
+    // float
+    if (PyFloat_Check(r->last)) {
+
+      // generator?
+      if (is_gen) {
+        gen->r_type = TYPE_FLOAT;
+        gen->r_float = PyFloat_AsDouble(gen->last);
+        add_obj_to_reader(PyFloat_FromDouble(gen->r_float), r, is_gen, c_type, cont, index);
+      }
+
+      // normal
+      else {
+        double r_value = PyFloat_AsDouble(r->last);
+        for (unsigned int r_index = 0; r_index < r_length; r_index++)
+          add_obj_to_reader(PyFloat_FromDouble(r_value), r, is_gen, c_type, cont, index);
+      };
+    }
+
+    // int
+    else if (PyLong_Check(r->last)) {
+
+      // generator?
+      if (is_gen) {
+        gen->r_type = TYPE_INT;
+        gen->r_int = PyLong_AsLong(gen->last);
+        add_obj_to_reader(PyLong_FromLong(gen->r_int), r, is_gen, c_type, cont, index);
+      }
+
+      // normal
+      else {
+        long int r_value = PyLong_AsLong(r->last);
+        for (unsigned int r_index = 0; r_index < r_length; r_index++)
+          add_obj_to_reader(PyLong_FromLong(r_value), r, is_gen, c_type, cont, index);
+      };
+    }
+
+    // string
+    else if (PyUnicode_Check(r->last)) {
+
+      // generator?
+      if (is_gen) {
+        gen->r_type = TYPE_SMALL_STRING;
+        gen->r_str = PyUnicode_AsUTF8AndSize(gen->last, &(gen->r_str_len));
+        add_obj_to_reader(PyUnicode_FromStringAndSize(gen->r_str, gen->r_str_len), r, is_gen, c_type, cont, index);
+      }
+
+      // normal
+      else {
+        long int r_str_len = 0;
+        const char* r_value = PyUnicode_AsUTF8AndSize(gen->last, &r_str_len);
+        for (unsigned int r_index = 0; r_index < r_length; r_index++)
+          add_obj_to_reader(PyUnicode_FromStringAndSize(r_value, r_str_len), r, is_gen, c_type, cont, index);
+      };
+    }
+
+    // bytes
+    else if (PyBytes_Check(r->last)) {
+
+      // generator?
+      if (is_gen) {
+        gen->r_type = TYPE_SMALL_BYTES;
+        char* r_str;
+        PyBytes_AsStringAndSize(gen->last, &r_str, &(gen->r_str_len));
+        if (gen->r_str != nullptr)
+          free((void*)gen->r_str);
+        gen->r_str = (const char*)malloc(gen->r_str_len);
+        memcpy((char*)gen->r_str, r_str, gen->r_str_len);
+        add_obj_to_reader(PyBytes_FromStringAndSize(r_str, gen->r_str_len), r, is_gen, c_type, cont, index);
+      }
+
+      // normal
+      else {
+        long int r_str_len = 0;
+        char* r_value;
+        PyBytes_AsStringAndSize(gen->last, &r_value, &r_str_len);
+        for (unsigned int r_index = 0; r_index < r_length; r_index++)
+          add_obj_to_reader(PyBytes_FromStringAndSize(r_value, r_str_len), r, is_gen, c_type, cont, index);
+      };
+    }
+
+    // the same
+    else {
+
+      // generator?
+      if (is_gen) {
+        gen->r_type = TYPE_NONE;
+        Py_INCREF(gen->last);
+        add_obj_to_reader(gen->last, r, is_gen, c_type, cont, index);
+      }
+
+      // normal
+      else {
+        for (unsigned int r_index = 0; r_index < r_length; r_index++)
+          add_obj_to_reader(r->last, r, is_gen, c_type, cont, index);
+      };
+
+    };
+
+
+  }
+
+  // load object
+  else {
+    auto load_obj = read_from_branch(r, branch);
+    add_obj_to_reader(load_obj, r, is_gen, c_type, cont, index);
+  };
+
+};
+
+template <class n_type>
+n_type read_num(Reader* r, const unsigned int size) {
+  r->read(reader_num_buffer, size);
+  n_type o_val = *((n_type*)reader_num_buffer);
+  return o_val;
+};
+
+void read_str(const char*& str, unsigned int& str_len, Reader* r, const unsigned char branch, const unsigned char type) {
+  str_len = read_length(r, branch, type);
+  str = (const char*)malloc(str_len + 1);
+  r->read((char*)str, str_len);
   ((char*)str)[str_len] = 0;
 };
 
-PyObject* _load_from_branch(Reader* r, const unsigned char branch) {
+PyObject* read_from_branch(Reader* r, const unsigned char branch) {
 
   // none
   if (branch == TYPE_NONE) {
@@ -59,37 +295,37 @@ PyObject* _load_from_branch(Reader* r, const unsigned char branch) {
 
   // int
   else if (branch == TYPE_BYTE) {
-    char value = _load_num<char>(r, 1);
+    char value = read_num<char>(r, 1);
     return PyLong_FromLong(value);
   } else if (branch == TYPE_UBYTE) {
-    unsigned char value = _load_num<unsigned char>(r, 1);
+    unsigned char value = read_num<unsigned char>(r, 1);
     return PyLong_FromLong(value);
   } else if (branch == TYPE_SHORT) {
-    short value = _load_num<short>(r, 2);
+    short value = read_num<short>(r, 2);
     return PyLong_FromLong(value);
   } else if (branch == TYPE_USHORT) {
-    unsigned short value = _load_num<unsigned short>(r, 2);
+    unsigned short value = read_num<unsigned short>(r, 2);
     return PyLong_FromLong(value);
   } else if (branch == TYPE_INT) {
-    int value = _load_num<int>(r, 4);
+    int value = read_num<int>(r, 4);
     return PyLong_FromLong(value);
   } else if (branch == TYPE_UINT) {
-    unsigned int value = _load_num<unsigned int>(r, 4);
+    unsigned int value = read_num<unsigned int>(r, 4);
     return PyLong_FromLong(value);
   } else if (branch == TYPE_LONG) {
-    long int value = _load_num<long int>(r, 8);
+    long int value = read_num<long int>(r, 8);
     return PyLong_FromLong(value);
   } else if (branch == TYPE_ULONG) {
-    unsigned long int value = _load_num<unsigned long int>(r, 8);
+    unsigned long int value = read_num<unsigned long int>(r, 8);
     return PyLong_FromUnsignedLong(value);
   }
 
   // float
   else if (branch == TYPE_FLOAT) {
-    float value = _load_num<float>(r, 4);
+    float value = read_num<float>(r, 4);
     return PyFloat_FromDouble(value);
   } else if (branch == TYPE_DOUBLE) {
-    double value = _load_num<double>(r, 8);
+    double value = read_num<double>(r, 8);
     return PyFloat_FromDouble(value);
   }
 
@@ -97,45 +333,47 @@ PyObject* _load_from_branch(Reader* r, const unsigned char branch) {
   else if (branch >= TYPE_SMALL_STRING && branch <= TYPE_LONG_STRING) {
    const char* str_val;
    unsigned int str_len;
-   _load_str(str_val, str_len, r, branch, TYPE_SMALL_STRING);
+   read_str(str_val, str_len, r, branch, TYPE_SMALL_STRING);
    return PyUnicode_FromStringAndSize(str_val, str_len);
   } else if (branch >= TYPE_SMALL_BYTES && branch <= TYPE_LONG_BYTES) {
    const char* str_val;
    unsigned int str_len;
-   _load_str(str_val, str_len, r, branch, TYPE_SMALL_BYTES);
+   read_str(str_val, str_len, r, branch, TYPE_SMALL_BYTES);
    return PyBytes_FromStringAndSize(str_val, str_len);
   }
 
   // list / tuple
   else if (branch >= TYPE_SMALL_LIST && branch <= TYPE_LONG_LIST) {
-    unsigned int i_size = _load_length(r, branch, TYPE_SMALL_LIST);
+    unsigned int i_size = read_length(r, branch, TYPE_SMALL_LIST);
     PyObject* i_out = PyList_New(i_size);
-    r->points.push_back(i_out);
+    r->add_point(i_out);
     unsigned int i_index = 0;
     while (i_index < i_size)
-      _load_next(r, TYPE_SMALL_LIST, i_out, i_index);
+      read_next(r, false, TYPE_SMALL_LIST, i_out, i_index);
     return i_out;
   } else if (branch >= TYPE_SMALL_TUPLE && branch <= TYPE_LONG_TUPLE) {
-    unsigned int i_size = _load_length(r, branch, TYPE_SMALL_TUPLE);
+    unsigned int i_size = read_length(r, branch, TYPE_SMALL_TUPLE);
     PyObject* i_out = PyTuple_New(i_size);
-    r->points.push_back(i_out);
+    unsigned int p_index = r->point_count;
+    r->point_count++;
     unsigned int i_index = 0;
     while (i_index < i_size)
-      _load_next(r, TYPE_SMALL_TUPLE, i_out, i_index);
+      read_next(r, false, TYPE_SMALL_TUPLE, i_out, i_index);
+    r->add_point(i_out, p_index);
     return i_out;
   }
 
   // dict
   else if (branch >= TYPE_SMALL_DICT && branch <= TYPE_LONG_DICT) {
     PyObject* d_out = PyDict_New();
-    r->points.push_back(d_out);
-    unsigned int d_size = _load_length(r, branch, TYPE_SMALL_DICT);
+    r->add_point(d_out);
+    unsigned int d_size = read_length(r, branch, TYPE_SMALL_DICT);
     PyObject* d_key;
     PyObject* d_value;
     unsigned int d_dummy_index = 0;
     for (unsigned int d_index = 0; d_index < d_size; d_index++) {
-      _load_next(r, 0, d_key, d_dummy_index);
-      _load_next(r, 0, d_value, d_dummy_index);
+      read_next(r, false, 0, d_key, d_dummy_index);
+      read_next(r, false, 0, d_value, d_dummy_index);
       PyDict_SetItem(d_out, d_key, d_value);
     };
     return d_out;
@@ -143,31 +381,31 @@ PyObject* _load_from_branch(Reader* r, const unsigned char branch) {
 
   // datetime
   else if (branch == TYPE_DATETIME) {
-    PyObject* ts_value = PyLong_FromLong(_load_num<unsigned int>(r, 4));
+    PyObject* ts_value = PyLong_FromLong(read_num<unsigned int>(r, 4));
     PyTuple_SetItem(unpack_datetime_func_args, 0, ts_value);
     PyObject* dt_out = PyObject_CallObject(unpack_datetime_func, unpack_datetime_func_args);
-    r->points.push_back(dt_out);
+    r->add_point(dt_out);
     return dt_out;
   } else if (branch == TYPE_PRECISE_DATETIME) {
-    PyObject* ts_value = PyFloat_FromDouble(_load_num<double>(r, 8));
+    PyObject* ts_value = PyFloat_FromDouble(read_num<double>(r, 8));
     PyTuple_SetItem(unpack_datetime_func_args, 0, ts_value);
     PyObject* dt_out = PyObject_CallObject(unpack_datetime_func, unpack_datetime_func_args);
-    r->points.push_back(dt_out);
+    r->add_point(dt_out);
     return dt_out;
   }
 
   // timedelta
   else if (branch == TYPE_PRECISE_TIMEDELTA) {
-    PyObject* td_value = PyLong_FromLong(_load_num<double>(r, 8));
+    PyObject* td_value = PyLong_FromLong(read_num<double>(r, 8));
     PyTuple_SetItem(unpack_timedelta_func_args, 0, td_value);
     PyObject* td_out = PyObject_CallObject(unpack_timedelta_func, unpack_timedelta_func_args);
-    r->points.push_back(td_out);
+    r->add_point(td_out);
     return td_out;
   } else if (branch >= TYPE_SMALL_TIMEDELTA && branch <= TYPE_LONG_TIMEDELTA) {
-    PyObject* td_value = PyLong_FromLong(_load_length(r, branch, TYPE_SMALL_TIMEDELTA));
+    PyObject* td_value = PyLong_FromLong(read_length(r, branch, TYPE_SMALL_TIMEDELTA));
     PyTuple_SetItem(unpack_timedelta_func_args, 0, td_value);
     PyObject* td_out = PyObject_CallObject(unpack_timedelta_func, unpack_timedelta_func_args);
-    r->points.push_back(td_out);
+    r->add_point(td_out);
     return td_out;
   }
 
@@ -175,22 +413,25 @@ PyObject* _load_from_branch(Reader* r, const unsigned char branch) {
   else if (branch >= TYPE_SMALL_OBJECT && branch <= TYPE_LONG_OBJECT) {
 
     // get name
-    unsigned int c_index = _load_length(r, branch, TYPE_SMALL_OBJECT);
+    unsigned int c_index = read_length(r, branch, TYPE_SMALL_OBJECT);
     std::string c_name = r->class_names[c_index];
-
-    // load the object
-    PyObject* o_obj = Py_None;
-    unsigned int o_index = 0;
-    _load_next(r, 0, o_obj, o_index);
-
-    // build the object
     PyObject* c_name_py = PyUnicode_FromString(c_name.c_str());
+
+    // create new object
     PyTuple_SetItem(unpack_object_func_args, 0, c_name_py);
-    PyTuple_SetItem(unpack_object_func_args, 1, o_obj);
+    PyObject* o_out = PyObject_CallObject(unpack_object_func, unpack_object_func_args);
+    r->add_point(o_out);
+
+
+    // load the state
+    PyObject* o_state = Py_None;
+    unsigned int o_index = 0;
+    read_next(r, false, 0, o_state, o_index);
+
+    // apply the state
+    PyObject_CallMethodObjArgs(o_out, set_state_obj, o_state, nullptr);
 
     // finished!
-    PyObject* o_out = PyObject_CallObject(unpack_object_func, unpack_object_func_args);
-    r->points.push_back(o_out);
     return o_out;
 
   }
@@ -199,120 +440,97 @@ PyObject* _load_from_branch(Reader* r, const unsigned char branch) {
   else if (branch >= TYPE_SMALL_PICKLED && branch <= TYPE_LONG_PICKLED) {
     const char* str_val;
     unsigned int str_len;
-    _load_str(str_val, str_len, r, branch, TYPE_SMALL_PICKLED);
+    read_str(str_val, str_len, r, branch, TYPE_SMALL_PICKLED);
     PyObject* p_bytes = PyBytes_FromStringAndSize(str_val, str_len);
     PyTuple_SetItem(pickle_load_func_args, 0, p_bytes);
     PyObject* p_obj = PyObject_CallObject(pickle_load_func, pickle_load_func_args);
+    r->add_point(p_obj);
     free((void*)str_val);
-    r->points.push_back(p_obj);
     return p_obj;
   }
 
   // refr
   else if (branch >= TYPE_SMALL_REFR && branch <= TYPE_LONG_REFR) {
-    unsigned int r_id = _load_length(r, branch, TYPE_SMALL_REFR);
+    unsigned int r_id = read_length(r, branch, TYPE_SMALL_REFR);
     return refr_objs[r_id];
   }
 
   // point
   else if (branch >= TYPE_SMALL_POINT && branch <= TYPE_LONG_POINT) {
-    unsigned int r_index = _load_length(r, branch, TYPE_SMALL_POINT);
-    return r->points[r_index - 1];
+    unsigned int r_index = read_length(r, branch, TYPE_SMALL_POINT);
+    PyObject* refr = r->points_from_indices[r_index];
+    return refr;
   }
 
 }
 
-void _add_obj_to_reader(PyObject* obj, Reader* r, const unsigned char c_type, PyObject*& cont, unsigned int& index) {
 
-  // start
-  r->last = obj;
-
-  // add to list
-  if (c_type == TYPE_SMALL_LIST) {
-    PyList_SetItem(cont, index, obj);
-    index++;
-
-    // add to tuple
-  } else if (c_type == TYPE_SMALL_TUPLE) {
-    PyTuple_SetItem(cont, index, obj);
-    index++;
-  }
-
-  // normal
-  else
-    cont = obj;
-
+// generator
+PyObject* Reader::gen_next() {
+  return Py_None;
 };
 
-void _load_next(Reader* r, const unsigned char c_type, PyObject*& cont, unsigned int& index) {
+PyObject* BuffReaderGen::gen_next() {
 
-  // get branch
-  unsigned char br = _load_num<unsigned char>(r, 1);
+  // start
+  PyObject* n_obj;
 
-  // class definition?
-  if (br == TYPE_DEFINE_CLASS) {
-    unsigned char c_len = _load_num<unsigned char>(r, 1);
-    char* c_name = (char*)realloc((char*)(r->read(c_len)), c_len + 1);
-    c_name[c_len] = 0;
-    r->classes[c_name] = r->class_count;
-    r->class_names[r->class_count] = c_name;
-    r->class_count++;
-    free(c_name);
-    _load_next(r, c_type, cont, index);
+  // normal
+  if (this->g_type == TYPE_NONE)
+    read_next(this, true, 0, n_obj, this->g_index);
+
+  // list / tuple
+  else if (this->g_type == TYPE_SMALL_LIST)
+    read_next(this, true, 0, n_obj, this->g_index);
+
+  // dict
+  else if (this->g_type == TYPE_SMALL_DICT) {
+
+    // load values
+    unsigned int d_dummy_index;
+    PyObject* d_key;
+    read_next(this, false, 0, d_key, d_dummy_index);
+    PyObject* d_value;
+    read_next(this, false, 0, d_value, d_dummy_index);
+
+    // create tuple
+    n_obj = PyTuple_New(2);
+    PyTuple_SetItem(n_obj, 0, d_key);
+    PyTuple_SetItem(n_obj, 1, d_value);
+
+    // finished!
+    this->g_index++;
+
   }
 
   // repeat
-  else if (br >= TYPE_SMALL_REPEAT && br <= TYPE_LONG_REPEAT) {
+  else if (this->g_type == TYPE_SMALL_REPEAT) {
 
-    // get size of repeat
-    auto r_length = _load_length(r, br, TYPE_SMALL_REPEAT);
-
-    // float
-    if (PyFloat_Check(r->last)) {
-      double f_value = PyFloat_AsDouble(r->last);
-      for (unsigned int r_index = 0; r_index < r_length; r_index++)
-        _add_obj_to_reader(PyFloat_FromDouble(f_value), r, c_type, cont, index);
-    }
-
-    // int
-    else if (PyLong_Check(r->last)) {
-      long int i_value = PyLong_AsLong(r->last);
-      for (unsigned int r_index = 0; r_index < r_length; r_index++)
-        _add_obj_to_reader(PyLong_FromLong(i_value), r, c_type, cont, index);
-    }
-
-    // string
-    else if (PyUnicode_Check(r->last)) {
-      const char* s_value = (const char*)PyUnicode_DATA(r->last);
-      for (unsigned int r_index = 0; r_index < r_length; r_index++)
-        _add_obj_to_reader(PyUnicode_FromString(s_value), r, c_type, cont, index);
-    }
-
-    // bytes
-    else if (PyFloat_Check(r->last)) {
-      const char* s_value = (const char*)PyBytes_AsString(r->last);
-      for (unsigned int r_index = 0; r_index < r_length; r_index++)
-        _add_obj_to_reader(PyBytes_FromString(s_value), r, c_type, cont, index);
-    }
-
-    // the same
+    if (this->r_type == TYPE_FLOAT)
+      n_obj = PyFloat_FromDouble(this->r_float);
+    else if (this->r_type == TYPE_INT)
+      n_obj = PyLong_FromLong(this->r_int);
+    else if (this->r_type == TYPE_SMALL_STRING)
+      n_obj = PyUnicode_FromStringAndSize(this->r_str, this->r_str_len);
+    else if (this->r_type == TYPE_SMALL_BYTES)
+      n_obj = PyBytes_FromStringAndSize(this->r_str, this->r_str_len);
     else {
-      for (unsigned int r_index = 0; r_index < r_length; r_index++)
-        _add_obj_to_reader(r->last, r, c_type, cont, index);
+      n_obj = this->last;
+      Py_INCREF(n_obj);
     };
 
+    this->g_index++;
+    this->g_repeat--;
+    if (this->g_repeat == 0)
+      this->g_type = this->g_last_type;
 
-  }
-
-  // load object
-  else {
-    auto load_obj = _load_from_branch(r, br);
-    _add_obj_to_reader(load_obj, r, c_type, cont, index);
   };
 
-};
+  // is this complete?
+  if (this->g_last_type == TYPE_SMALL_LIST || this->g_last_type == TYPE_SMALL_DICT)
+    this->g_complete = this->g_index == this->g_length;
 
-PyObject* Reader::load() {
+  // finished!
+  return n_obj;
 
-  return Py_None;
 };

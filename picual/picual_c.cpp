@@ -1,33 +1,41 @@
 
-// include header
+// include source
 #include "picual_c.h"
-
-// writer
 #include "picual_writer.cpp"
 #include "picual_reader.cpp"
 
 // functionality
 PyObject* _dumps(PyObject* obj) {
-  std::stringstream buff("");
-  Writer writer(W_TO_BUFF);
-  writer.dump(obj);
-  return PyBytes_FromStringAndSize(writer.buff, writer.size);
+  BuffWriter writer;
+  writer.write_obj(obj);
+  return writer.to_bytes();
 };
 
 PyObject* _loads(PyObject* py_data) {
 
+  // get data from python
   char* data;
   long int d_len;
   PyBytes_AsStringAndSize(py_data, &data, &d_len);
 
-  Reader reader(R_FROM_BUFF);
-  reader.buff = data;
+  // read object from buffer
+  BuffReader reader(data);
+  return reader.read_obj();
 
-  PyObject* l_obj = Py_None;
-  unsigned int l_index = 0;
-  _load_next(&reader, 0, l_obj, l_index);
-  return l_obj;
-}
+};
+
+BuffReaderGen* _loadgs(PyObject* py_data) {
+
+  // get data
+  char* data;
+  long int d_len;
+  PyBytes_AsStringAndSize(py_data, &data, &d_len);
+
+  // create reader
+  BuffReaderGen* reader = new BuffReaderGen(data);
+  return reader;
+
+};
 
 // references
 void _store_refr(PyObject* obj) {
@@ -63,12 +71,14 @@ void _init(PyObject* get_class_name_func_, PyObject* pickle_dump_func_, PyObject
   get_class_name_func_args = PyTuple_New(1);
 
   unpack_object_func = unpack_object_func_;
-  unpack_object_func_args = PyTuple_New(2);
+  unpack_object_func_args = PyTuple_New(1);
 
   get_name_name = "__name__";
   get_module_name = "__module__";
   get_state_name = "__getstate__";
   get_state_obj = PyUnicode_FromString(get_state_name);
+  set_state_obj = PyUnicode_FromString("__setstate__");
 
+  reader_num_buffer = (char*)malloc(8);
 
 };

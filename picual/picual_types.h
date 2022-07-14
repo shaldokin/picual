@@ -53,6 +53,7 @@
 #define TYPE_SHORT_DICT 35
 #define TYPE_MED_DICT 36
 #define TYPE_LONG_DICT 37
+#define TYPE_DICT_GEN 3700
 
 // datetime
 #define TYPE_DATETIME 38
