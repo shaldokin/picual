@@ -38,7 +38,23 @@ class BuffReader : public Reader {
     void read(char* buff, const unsigned int size);
 };
 
-// buff reader
+// stream reader
+class StreamReader : public Reader {
+  public:
+
+    // members
+    PyObject* stream;
+
+    // construction / destruction
+    StreamReader(PyObject* stream);
+    ~StreamReader();
+
+    // read
+    void read(char* buff, const unsigned int size);
+
+};
+
+// buff reader generator
 class BuffReaderGen : public BuffReader {
   public:
 

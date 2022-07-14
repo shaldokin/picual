@@ -4,23 +4,37 @@
 
 # import dependencies
 import datetime, importlib, pickle
-import socket, sys
+import socket, struct, sys
 
 # extern
 cdef extern from "picual_c.cpp":
-    _dumps(obj)
-    _loads(data)
-    void _init(get_class_name, pickle_dump_func, pickle_load_func, datetime_class, pack_datetime_func, unpack_timedelta, timedelta_class, pack_timedelta_func, unpack_timedelta_func, unpack_object_func)
-    void _store_refr(obj)
 
-    cdef cppclass BuffReaderGen:
+    cdef int TYPE_MED_TUPLE
+
+    cdef cppclass Reader:
+        pass
+
+    cdef cppclass BuffReaderGen(Reader):
         int is_wrong_type
         int g_complete
         gen_next()
         void reset()
 
+    cdef cppclass Writer:
+        to_bytes()
+        void write_bytes(obj)
+
+    cdef cppclass BuffWriter(Writer):
+        pass
+
+    void _dump(obj, stream)
+    _dumps(obj)
+    _load(stream)
+    _loads(data)
     BuffReaderGen* _loadgs(data)
 
+    void _init(get_class_name, pickle_dump_func, pickle_load_func, datetime_class, pack_datetime_func, unpack_timedelta, timedelta_class, pack_timedelta_func, unpack_timedelta_func, unpack_object_func)
+    void _store_refr(obj)
 
 # util
 cpdef get_obj_from_refr(str name):
@@ -64,13 +78,75 @@ cdef class PicualLoadGenerator:
         self.reader.reset()
 
 # connection
-cdef class PicualDumpCon:
+cdef class PicualDumpNet:
+
+    cdef int count;
+    cdef Writer* _writer
     cdef object _sock
+
+    def __init__(self, str addr, int port):
+        self.count = 0;
+        self._sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        self._sock.bind((addr, port))
+        self._sock.setblocking(False)
+        self._sock.listen()
+
+    @property
+    def data(self):
+        return struct.pack('<BI', TYPE_MED_TUPLE, self.count) + self._writer.to_bytes()
+
+    cpdef update(self):
+        try:
+            conn, addr = self._sock.accept()
+            data = b''
+            while True:
+                get = conn.recv(4096)
+                if get:
+                    data += get
+                else:
+                    break
+            self.count += 1
+            self._writer.write_bytes(data)
+        except BlockingIOError:
+            pass
+
+    cpdef close(self):
+        self._sock.close()
+
+cdef class PicualDumpNetConn:
+
+    cdef str _addr;
+    cdef int _port;
+
+    def __init__(self, str addr, int port):
+        self._addr = addr
+        self._port = port
+
+    cpdef dump(self, obj):
+        cdef bytes dump_data = dumps(obj)
+        sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        sock.connect((self._addr, self._port))
+        sock.send(dump_data)
+        sock.close()
 
 
 # functionality
+cpdef dump(obj, stream):
+    _dump(obj, stream)
+
 cpdef bytes dumps(obj):
     return _dumps(obj)
+
+cpdef PicualDumpNetConn dumpnc(str addr, int port):
+    return PicualDumpNetConn(addr, port)
+
+cpdef PicualDumpNet dumpns(str addr, int port):
+    cdef PicualDumpNet dnet = PicualDumpNet(addr, port)
+    dnet._writer = new BuffWriter()
+    return dnet
+
+cpdef load(stream):
+    return _load(stream)
 
 cpdef loads(bytes data):
     return _loads(data)

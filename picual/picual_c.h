@@ -20,7 +20,9 @@ typedef int (*py_check_func)(PyObject*);
 #include "picual_reader.h"
 
 // util
+void _dump(PyObject* obj, PyObject* stream);
 PyObject* _dumps(PyObject* obj);
+PyObject* _load(PyObject* stream);
 PyObject* _loads(PyObject* data);
 BuffReaderGen* _loadgs(PyObject* data);
 
@@ -59,5 +61,7 @@ const char* get_module_name;
 const char* get_state_name;
 PyObject* get_state_obj;
 PyObject* set_state_obj;
+PyObject* read_name_obj;
+PyObject* write_name_obj;
 
 void _init(PyObject* get_class_name_func, PyObject* pickle_dump_func, PyObject* pickle_load_func, PyObject* datetime_class, PyObject* pack_datetime_func, PyObject* unpack_datetime_func, PyObject* timedelta_class, PyObject* pack_timedelta_func, PyObject* unpack_object_func);

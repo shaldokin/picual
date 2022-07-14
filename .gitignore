@@ -8,3 +8,4 @@ venv
 *.DS_Store
 picual/picual.cpp
 build
+test.pkl

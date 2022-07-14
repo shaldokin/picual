@@ -20,6 +20,7 @@ class Writer {
     virtual void write(const char* data, const unsigned int len);
     void write_obj(PyObject* obj);
     virtual PyObject* to_bytes();
+    void write_bytes(PyObject* obj);
 
 };
 
@@ -38,6 +39,21 @@ class BuffWriter : public Writer {
     // write
     void write(const char* data, const unsigned int len);
     PyObject* to_bytes();
+
+};
+
+// stream writer
+class StreamWriter : public Writer {
+  public:
+
+    PyObject* stream;
+
+    // construction / destruction
+    StreamWriter(PyObject* stream);
+    ~StreamWriter();
+
+    // write
+    void write(const char* data, const unsigned int len);
 
 };
 

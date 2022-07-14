@@ -5,10 +5,20 @@
 #include "picual_reader.cpp"
 
 // functionality
+void _dump(PyObject* obj, PyObject* stream) {
+  StreamWriter writer(stream);
+  writer.write_obj(obj);
+};
+
 PyObject* _dumps(PyObject* obj) {
   BuffWriter writer;
   writer.write_obj(obj);
   return writer.to_bytes();
+};
+
+PyObject* _load(PyObject* stream) {
+  StreamReader reader(stream);
+  return reader.read_obj();
 };
 
 PyObject* _loads(PyObject* py_data) {
@@ -78,6 +88,9 @@ void _init(PyObject* get_class_name_func_, PyObject* pickle_dump_func_, PyObject
   get_state_name = "__getstate__";
   get_state_obj = PyUnicode_FromString(get_state_name);
   set_state_obj = PyUnicode_FromString("__setstate__");
+
+  write_name_obj = PyUnicode_FromString("write");
+  read_name_obj = PyUnicode_FromString("read");
 
   reader_num_buffer = (char*)malloc(8);
 

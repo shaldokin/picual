@@ -7,6 +7,14 @@ BuffWriter::~BuffWriter() {
   free(this->buff);
 };
 
+StreamWriter::StreamWriter(PyObject* stream) {
+  Py_INCREF(stream);
+  this->stream = stream;
+};
+StreamWriter::~StreamWriter() {
+  Py_DECREF(this->stream);
+};
+
 // write
 void Writer::write(const char* data, const unsigned int len) {};
 
@@ -14,6 +22,18 @@ void BuffWriter::write(const char* data, const unsigned int len) {
   this->buff = (char*)realloc(this->buff, this->size + len);
   memcpy((void*)(((const char*)this->buff) + this->size), data, len);
   this->size += len;
+};
+
+void StreamWriter::write(const char* data, const unsigned int len) {
+  PyObject* to_write = PyBytes_FromStringAndSize(data, len);
+  PyObject_CallMethodObjArgs(this->stream, write_name_obj, to_write, nullptr);
+};
+
+void Writer::write_bytes(PyObject* obj) {
+  char* b_str;
+  long int b_size;
+  PyBytes_AsStringAndSize(obj, &b_str, &b_size);
+  this->write(b_str, b_size);
 };
 
 void Writer::write_obj(PyObject* obj) {

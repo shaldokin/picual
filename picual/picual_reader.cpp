@@ -7,6 +7,14 @@ BuffReader::BuffReader(const char* buff) {
   this->buff = buff;
 };
 
+StreamReader::StreamReader(PyObject* stream) {
+  this->stream = stream;
+  Py_INCREF(this->stream);
+};
+StreamReader::~StreamReader() {
+  Py_DECREF(this->stream);
+};
+
 BuffReaderGen::BuffReaderGen(const char* buff) {
   this->o_buff = buff;
   this->is_gen = true;
@@ -84,6 +92,13 @@ void Reader::read(char* buff, const unsigned int size) {};
 void BuffReader::read(char* buff, const unsigned int size) {
   memcpy(buff, this->buff, size);
   this->buff += size;
+};
+
+void StreamReader::read(char* buff, const unsigned int size) {
+  PyObject* p_size = PyLong_FromLong(size);
+  PyObject* r_data = PyObject_CallMethodObjArgs(this->stream, read_name_obj, p_size, nullptr);
+  char* bytes = PyBytes_AsString(r_data);
+  memcpy(buff, bytes, size);
 };
 
 PyObject* Reader::read_obj() {
