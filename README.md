@@ -87,3 +87,8 @@ def foo():
 
 This is especially useful for when local functions are created within functions.
 
+
+## Load Generators
+If you have a large tuple, list, or even dictionary stored in a file, you can open the file as a generator and just load on object at a time.
+You can do so using `loadg(file)`, `loadg_from(filename)`, or `loadgs(data)`.
+

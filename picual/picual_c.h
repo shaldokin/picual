@@ -26,7 +26,8 @@ void _dump(PyObject* obj, PyObject* stream);
 PyObject* _dumps(PyObject* obj);
 PyObject* _load(PyObject* stream);
 PyObject* _loads(PyObject* data);
-BuffReaderGen* _loadgs(PyObject* data);
+ReaderGen* _loadg(PyObject* file);
+ReaderGen* _loadgs(PyObject* data);
 
 // custom
 PyObject* custom_dumper_args;

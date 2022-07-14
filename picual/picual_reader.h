@@ -58,11 +58,10 @@ class StreamReader : public Reader {
 
 };
 
-// buff reader generator
-class BuffReaderGen : public BuffReader {
+// reader generator
+class ReaderGen : public Reader {
   public:
 
-    const char* o_buff;
     int is_wrong_type = 0;
 
     char g_type = TYPE_NONE;
@@ -80,11 +79,34 @@ class BuffReaderGen : public BuffReader {
     long int r_str_len = 0;
     PyObject* r_obj;
 
-    BuffReaderGen(const char* buff);
+    ReaderGen();
 
     PyObject* gen_next();
     void reset();
-    void _init();
+    virtual void _init();
+};
+
+class BuffReaderGen : public ReaderGen {
+  public:
+
+    const char* buff;
+    const char* o_buff;
+
+    BuffReaderGen(const char* buff);
+    void read(char* buff, const unsigned int size);
+    virtual void _init();
+
+};
+
+class StreamReaderGen : public ReaderGen {
+  public:
+
+    PyObject* stream;
+
+    StreamReaderGen(PyObject* stream);
+    void read(char* buff, const unsigned int size);
+    virtual void _init();
+
 };
 
 // reading helper functions

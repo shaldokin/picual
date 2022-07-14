@@ -15,16 +15,25 @@ StreamReader::~StreamReader() {
   Py_DECREF(this->stream);
 };
 
+ReaderGen::ReaderGen() {};
+
 BuffReaderGen::BuffReaderGen(const char* buff) {
+  this->buff = buff;
   this->o_buff = buff;
   this->is_gen = true;
   this->_init();
 };
 
-void BuffReaderGen::_init() {
+StreamReaderGen::StreamReaderGen(PyObject* stream) {
+  Py_INCREF(stream);
+  this->stream = stream;
+  this->is_gen = true;
+  this->_init();
+};
+
+void ReaderGen::_init() {
 
   // set buffer to beginning
-  this->buff = this->o_buff;
   this->g_complete = 0;
   this->g_type = TYPE_NONE;
 
@@ -61,8 +70,18 @@ void BuffReaderGen::_init() {
 
 };
 
-void BuffReaderGen::reset() {
+void ReaderGen::reset() {
   this->_init();
+};
+
+void BuffReaderGen::_init() {
+  this->buff = this->o_buff;
+  ReaderGen::_init();
+};
+
+void StreamReaderGen::_init() {
+  PyObject_CallMethodObjArgs(this->stream, seek_name_obj, PyLong_FromLong(0), nullptr);
+  ReaderGen::_init();
 };
 
 // points
@@ -98,7 +117,19 @@ void BuffReader::read(char* buff, const unsigned int size) {
   this->buff += size;
 };
 
+void BuffReaderGen::read(char* buff, const unsigned int size) {
+  memcpy(buff, this->buff, size);
+  this->buff += size;
+};
+
 void StreamReader::read(char* buff, const unsigned int size) {
+  PyObject* p_size = PyLong_FromLong(size);
+  PyObject* r_data = PyObject_CallMethodObjArgs(this->stream, read_name_obj, p_size, nullptr);
+  char* bytes = PyBytes_AsString(r_data);
+  memcpy(buff, bytes, size);
+};
+
+void StreamReaderGen::read(char* buff, const unsigned int size) {
   PyObject* p_size = PyLong_FromLong(size);
   PyObject* r_data = PyObject_CallMethodObjArgs(this->stream, read_name_obj, p_size, nullptr);
   char* bytes = PyBytes_AsString(r_data);
@@ -511,7 +542,7 @@ PyObject* Reader::gen_next() {
   return Py_None;
 };
 
-PyObject* BuffReaderGen::gen_next() {
+PyObject* ReaderGen::gen_next() {
 
   // start
   PyObject* n_obj;

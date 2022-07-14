@@ -34,7 +34,11 @@ PyObject* _loads(PyObject* py_data) {
 
 };
 
-BuffReaderGen* _loadgs(PyObject* py_data) {
+ReaderGen* _loadg(PyObject* stream) {
+  return new StreamReaderGen(stream);
+};
+
+ReaderGen* _loadgs(PyObject* py_data) {
 
   // get data
   char* data;

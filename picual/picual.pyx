@@ -14,11 +14,14 @@ cdef extern from "picual_c.cpp":
     cdef cppclass Reader:
         pass
 
-    cdef cppclass BuffReaderGen(Reader):
+    cdef cppclass ReaderGen(Reader):
         int is_wrong_type
         int g_complete
         gen_next()
         void reset()
+
+    cdef cppclass BuffReaderGen(ReaderGen):
+        pass
 
     cdef cppclass Writer:
         to_bytes()
@@ -34,7 +37,8 @@ cdef extern from "picual_c.cpp":
     _dumps(obj)
     _load(stream)
     _loads(data)
-    BuffReaderGen* _loadgs(data)
+    ReaderGen* _loadg(data)
+    ReaderGen* _loadgs(data)
 
     void _init(config)
     void _store_refr(name, obj)
@@ -51,7 +55,8 @@ cdef dict picual_config = {}
 
 # generator
 cdef class PicualLoadGenerator:
-    cdef BuffReaderGen* reader
+
+    cdef ReaderGen* reader
 
     def __next__(self):
         if self.reader.g_complete:
@@ -256,8 +261,22 @@ cpdef PicualDumpNet dumpns(str addr, int port):
 cpdef load(stream):
     return _load(stream)
 
+cpdef load_from(str filename):
+    with open(filename, 'rb') as load_file:
+        return _load(load_file)
+
 cpdef loads(bytes data):
     return _loads(data)
+
+cpdef loadg(stream):
+    cdef PicualLoadGenerator gen = PicualLoadGenerator()
+    gen.reader = _loadg(stream)
+    if gen.reader.is_wrong_type:
+        raise TypeError('You can only load a generator from a list, tuple, or dictionary')
+    return gen
+
+cpdef loadg_from(str filename):
+    return loadg(open(filename, 'rb'))
 
 cpdef loadgs(bytes data):
     cdef PicualLoadGenerator gen = PicualLoadGenerator()
@@ -266,6 +285,4 @@ cpdef loadgs(bytes data):
         raise TypeError('You can only load a generator from a list, tuple, or dictionary')
     return gen
 
-cpdef load_from(str filename):
-    with open(filename, 'rb') as load_file:
-        return _load(load_file)
+
