@@ -19,6 +19,10 @@ class Reader {
     unsigned int point_count = 1;
     void add_point(PyObject* obj, const unsigned int defp=0);
 
+    // references
+    std::unordered_map<unsigned int, PyObject*> refrs;
+    unsigned int refr_count = 1;
+
     // read
     virtual PyObject* read_obj();
     virtual void read(char* buff, const unsigned int size);

@@ -27,11 +27,10 @@ PyObject* _loads(PyObject* data);
 BuffReaderGen* _loadgs(PyObject* data);
 
 // references
-std::unordered_map<unsigned int, PyObject*> refr_objs;
-std::unordered_map<PyObject*, unsigned int> refr_ids;
-unsigned int refr_count = 1;
+std::unordered_map<std::string, PyObject*> refr_objs;
+std::unordered_map<PyObject*, const char*> refr_ids;
 
-void _store_refr(PyObject* obj);
+void _store_refr(PyObject* name, PyObject* obj);
 
 // integration
 PyObject* eq_name;
@@ -64,4 +63,4 @@ PyObject* set_state_obj;
 PyObject* read_name_obj;
 PyObject* write_name_obj;
 
-void _init(PyObject* get_class_name_func, PyObject* pickle_dump_func, PyObject* pickle_load_func, PyObject* datetime_class, PyObject* pack_datetime_func, PyObject* unpack_datetime_func, PyObject* timedelta_class, PyObject* pack_timedelta_func, PyObject* unpack_object_func);
+void _init(PyObject* config);

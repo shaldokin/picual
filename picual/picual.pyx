@@ -3,7 +3,7 @@
 # distutils: language = c++
 
 # import dependencies
-import datetime, importlib, pickle
+import datetime, hashlib, importlib, pickle
 import socket, struct, sys
 
 # extern
@@ -33,34 +33,12 @@ cdef extern from "picual_c.cpp":
     _loads(data)
     BuffReaderGen* _loadgs(data)
 
-    void _init(get_class_name, pickle_dump_func, pickle_load_func, datetime_class, pack_datetime_func, unpack_timedelta, timedelta_class, pack_timedelta_func, unpack_timedelta_func, unpack_object_func)
-    void _store_refr(obj)
-
-# util
-cpdef get_obj_from_refr(str name):
-
-    cdef str m_name
-    m_name = name[:name.find('.')]
-
-    cdef str c_name
-    c_name = name[name.find('.'):]
-
-    cdef str e_str
-    e_str = f'sys.modules["{m_name}"]{c_name}'
-
-    try:
-        return eval(e_str)
-    except KeyError:
-        importlib.import_module(m_name)
-        return eval(e_str)
+    void _init(config)
+    void _store_refr(name, obj)
 
 
-# object
-cpdef unpack_object(str c_name):
-    cls = get_obj_from_refr(c_name)
-    n_obj = object.__new__(cls)
-    return n_obj
-
+# make config
+cdef dict picual_config = {}
 
 # generator
 cdef class PicualLoadGenerator:
@@ -129,8 +107,89 @@ cdef class PicualDumpNetConn:
         sock.send(dump_data)
         sock.close()
 
+# object
+cpdef unpack_object(str c_name):
+    cls = get_obj_from_refr(c_name)
+    n_obj = object.__new__(cls)
+    return n_obj
 
-# functionality
+cpdef get_class_name(obj):
+    return obj.__class__.__module__ + '.' + obj.__class__.__name__
+
+picual_config['unpack_object'] = unpack_object
+picual_config['get_class_name'] = get_class_name
+picual_config['pickle_dump'] = pickle.dumps
+picual_config['pickle_load'] = pickle.loads
+
+# datetime
+cpdef pack_datetime(obj):
+    cdef double tsv = obj.timestamp()
+    if obj.microsecond:
+        return tsv
+    else:
+        return int(tsv)
+
+picual_config['datetime_class'] = datetime.datetime
+picual_config['pack_datetime'] = pack_datetime
+picual_config['unpack_datetime'] = datetime.datetime.fromtimestamp
+
+# timedelta
+cpdef pack_timedelta(obj):
+    cdef double tsv = obj.total_seconds()
+    if obj.microseconds:
+        return tsv
+    else:
+        return int(tsv)
+
+cpdef unpack_timedelta(obj):
+    return datetime.timedelta(seconds=obj)
+
+picual_config['timedelta_class'] = datetime.timedelta
+picual_config['pack_timedelta'] = pack_timedelta
+picual_config['unpack_timedelta'] = unpack_timedelta
+
+# referencing
+def store_refr(str name, obj=None):
+    r_name = store_refr_name(name)
+    if obj is None:
+        def store_refr_decor(func):
+            _store_refr(r_name, func)
+            return func
+        return store_refr_decor
+    else:
+        _store_refr(r_name, obj)
+        return obj
+
+
+cpdef get_obj_from_refr(str name):
+
+    cdef str m_name
+    m_name = name[:name.find('.')]
+
+    cdef str c_name
+    c_name = name[name.find('.'):]
+
+    cdef str e_str
+    e_str = f'sys.modules["{m_name}"]{c_name}'
+
+    try:
+        return eval(e_str)
+    except KeyError:
+        importlib.import_module(m_name)
+        return eval(e_str)
+picual_config['get_obj_from_refr'] = get_obj_from_refr
+
+cpdef bytes store_refr_name(str name):
+    if len(name) < 16:
+        return name.encode()
+    else:
+        return hashlib.md5(name.encode()).digest()
+picual_config['store_refr_name'] = store_refr_name
+
+# initialize
+_init(picual_config)
+
+# picual functionality
 cpdef dump(obj, stream):
     _dump(obj, stream)
 
@@ -157,39 +216,3 @@ cpdef loadgs(bytes data):
     if gen.reader.is_wrong_type:
         raise TypeError('You can only load a generator from a list, tuple, or dictionary')
     return gen
-
-# datetime
-cpdef pack_datetime(obj):
-    cdef double tsv = obj.timestamp()
-    if obj.microsecond:
-        return tsv
-    else:
-        return int(tsv)
-
-# timedelta
-cpdef pack_timedelta(obj):
-    cdef double tsv = obj.total_seconds()
-    if obj.microseconds:
-        return tsv
-    else:
-        return int(tsv)
-
-cpdef unpack_timedelta(obj):
-    return datetime.timedelta(seconds=obj)
-
-# utility
-cpdef store_refr(obj):
-  _store_refr(obj)
-  return obj
-
-# initiate
-datetime_class = datetime.datetime
-timedelta_class = datetime.timedelta
-pickle_dump_func = pickle.dumps
-pickle_load_func = pickle.loads
-unpack_datetime = datetime.datetime.fromtimestamp
-
-cpdef get_class_name(obj):
-    return obj.__class__.__module__ + '.' + obj.__class__.__name__
-
-_init(get_class_name, pickle_dump_func, pickle_load_func, datetime_class, pack_datetime, unpack_datetime, timedelta_class, pack_timedelta, unpack_timedelta, unpack_object)

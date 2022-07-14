@@ -92,7 +92,8 @@
 #define TYPE_LONG_POINT 61
 
 // refr
-#define TYPE_SMALL_REFR 62
-#define TYPE_SHORT_REFR 63
-#define TYPE_MED_REFR 64
-#define TYPE_LONG_REFR 65
+#define TYPE_DEFINE_REFR 62
+#define TYPE_SMALL_REFR 63
+#define TYPE_SHORT_REFR 64
+#define TYPE_MED_REFR 65
+#define TYPE_LONG_REFR 66

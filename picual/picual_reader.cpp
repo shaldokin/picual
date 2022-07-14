@@ -28,6 +28,10 @@ void BuffReaderGen::_init() {
   this->g_complete = 0;
   this->g_type = TYPE_NONE;
 
+  // reset refrs
+  this->refr_count = 1;
+  this->refrs = std::unordered_map<unsigned int, PyObject*>();
+
   // reset points
   this->point_count = 1;
   this->points = std::unordered_map<void*, unsigned int>();
@@ -157,6 +161,28 @@ void read_next(Reader* r, const bool is_gen, const unsigned char c_type, PyObjec
     r->get_class(c_name);
     read_next(r, is_gen, c_type, cont, index);
     free(c_name);
+  }
+
+  // refr definition
+  else if (branch == TYPE_DEFINE_REFR) {
+
+    // get name of reference
+    unsigned char r_len = read_num<unsigned char>(r, 1);
+    char* r_name = (char*)malloc(r_len + 1);
+    r->read(r_name, r_len);
+    r_name[r_len] = 0;
+
+    // store reference
+    auto refr = refr_objs[r_name];
+    Py_INCREF(refr);
+    r->refrs[r->refr_count] = refr;
+    r->refr_count++;
+
+    // clean up
+    free((void*)r_name);
+
+    // get next object
+    read_next(r, is_gen, c_type, cont, index);
   }
 
   // repeat
@@ -467,14 +493,14 @@ PyObject* read_from_branch(Reader* r, const unsigned char branch) {
   // refr
   else if (branch >= TYPE_SMALL_REFR && branch <= TYPE_LONG_REFR) {
     unsigned int r_id = read_length(r, branch, TYPE_SMALL_REFR);
-    return refr_objs[r_id];
+    return r->refrs[r_id];
   }
 
   // point
   else if (branch >= TYPE_SMALL_POINT && branch <= TYPE_LONG_POINT) {
     unsigned int r_index = read_length(r, branch, TYPE_SMALL_POINT);
-    PyObject* refr = r->points_from_indices[r_index];
-    return refr;
+    PyObject* point = r->points_from_indices[r_index];
+    return point;
   }
 
 }

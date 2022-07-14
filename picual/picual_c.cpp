@@ -48,39 +48,43 @@ BuffReaderGen* _loadgs(PyObject* py_data) {
 };
 
 // references
-void _store_refr(PyObject* obj) {
-  refr_ids[obj] = refr_count;
-  refr_objs[refr_count] = obj;
-  refr_count++;
+void _store_refr(PyObject* name, PyObject* obj) {
+  char* refr_name = PyBytes_AsString(name);
+  refr_ids[obj] = strdup(refr_name);
+  refr_objs[refr_name] = obj;
+  Py_INCREF(obj);
 };
 
 // integration
-void _init(PyObject* get_class_name_func_, PyObject* pickle_dump_func_, PyObject* pickle_load_func_, PyObject* datetime_class_, PyObject* pack_datetime_func_, PyObject* unpack_datetime_func_, PyObject* timedelta_class_, PyObject* pack_timedelta_func_, PyObject* unpack_timedelta_func_, PyObject* unpack_object_func_) {
+void _init(PyObject* config) {
+
+
   eq_name = PyUnicode_FromString("__eq__");
   datetime_to_timestamp_name = PyUnicode_FromString("timestamp");
   get_class_name = "__class__";
 
-  datetime_class = datetime_class_;
-  pack_datetime_func = pack_datetime_func_;
+  datetime_class = PyDict_GetItemString(config, "datetime_class");
+  pack_datetime_func = PyDict_GetItemString(config, "pack_datetime");
+  Py_INCREF(pack_datetime_func);
   pack_datetime_func_args = PyTuple_New(1);
-  unpack_datetime_func = unpack_datetime_func_;
+  unpack_datetime_func = PyDict_GetItemString(config, "unpack_datetime");
   unpack_datetime_func_args = PyTuple_New(1);
 
-  timedelta_class = timedelta_class_;
-  pack_timedelta_func = pack_timedelta_func_;
+  timedelta_class = PyDict_GetItemString(config, "timedelta_class");
+  pack_timedelta_func = PyDict_GetItemString(config, "pack_timedelta");
   pack_timedelta_func_args = PyTuple_New(1);
-  unpack_timedelta_func = unpack_timedelta_func_;
+  unpack_timedelta_func = PyDict_GetItemString(config, "unpack_timedelta");
   unpack_timedelta_func_args = PyTuple_New(1);
 
-  pickle_dump_func = pickle_dump_func_;
+  pickle_dump_func = PyDict_GetItemString(config, "pickle_dump");
   pickle_dump_func_args = PyTuple_New(1);
-  pickle_load_func = pickle_load_func_;
+  pickle_load_func = PyDict_GetItemString(config, "pickle_load");
   pickle_load_func_args = PyTuple_New(1);
 
-  get_class_name_func = get_class_name_func_;
+  get_class_name_func = PyDict_GetItemString(config, "get_class_name");
   get_class_name_func_args = PyTuple_New(1);
 
-  unpack_object_func = unpack_object_func_;
+  unpack_object_func = PyDict_GetItemString(config, "unpack_object");
   unpack_object_func_args = PyTuple_New(1);
 
   get_name_name = "__name__";

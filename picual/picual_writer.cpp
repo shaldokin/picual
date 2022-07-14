@@ -49,6 +49,23 @@ PyObject* BuffWriter::to_bytes() {
   return PyBytes_FromStringAndSize(this->buff, this->size);
 };
 
+// references
+const int Writer::check_refr(PyObject* obj, unsigned int& refr_id) {
+  refr_id = this->refr_indices[obj];
+  if (refr_id == 0) {
+    const char* refr_name = refr_ids[obj];
+    if (refr_name != nullptr) {
+      write_str<unsigned char>(this, TYPE_DEFINE_REFR, refr_name, strlen(refr_name), 1);
+      refr_id = this->refr_count;
+      this->refr_indices[obj] = refr_id;
+      this->refr_count++;
+      return 1;
+    } else
+      return 0;
+  } else
+    return 1;
+};
+
 // classes
 unsigned int Writer::get_class(PyObject* cls) {
 
@@ -88,11 +105,6 @@ const int Writer::check_point(PyObject* obj, unsigned int& point_index) {
 };
 
 // writing helper functions
-bool check_refr(Writer* w, PyObject* obj, unsigned int& refr_id) {
-  refr_id = refr_ids[obj];
-  return refr_id != 0;
-};
-
 void write_branch(Writer* w, PyObject* container, unsigned int& index, const unsigned int size, py_get_function get, PyObject* obj) {
 
   // start
@@ -138,7 +150,7 @@ void write_branch(Writer* w, PyObject* container, unsigned int& index, const uns
   }
 
   // refr
-  else if (check_refr(w, obj, refr_id))
+  else if (w->check_refr(obj, refr_id))
     write_length(w, TYPE_SMALL_REFR, refr_id);
 
   // point

@@ -13,6 +13,11 @@ class Writer {
     unsigned int point_count = 1;
     const int check_point(PyObject* obj, unsigned int& point_index);
 
+    // references
+    std::unordered_map<PyObject*, unsigned int> refr_indices;
+    unsigned int refr_count = 1;
+    const int check_refr(PyObject* obj, unsigned int& refr_id);
+
     // state
     PyObject* obj = Py_None;
 
@@ -58,8 +63,6 @@ class StreamWriter : public Writer {
 };
 
 // writing helper functions
-bool check_refr(Writer* w, PyObject* obj, unsigned int& refr_id);
-
 void write_branch(Writer* w, PyObject* container, unsigned int& index, const unsigned int size, py_get_function get, PyObject* obj);
 
 void write_int(Writer* w, const unsigned char branch, long int value);
