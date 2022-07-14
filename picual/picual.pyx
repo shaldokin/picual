@@ -27,6 +27,9 @@ cdef extern from "picual_c.cpp":
     cdef cppclass BuffWriter(Writer):
         pass
 
+    cdef cppclass StreamWriter(Writer):
+        StreamWriter(fileobj)
+
     void _dump(obj, stream)
     _dumps(obj)
     _load(stream)
@@ -35,6 +38,12 @@ cdef extern from "picual_c.cpp":
 
     void _init(config)
     void _store_refr(name, obj)
+
+    void _add_custom_dumper(cls, func)
+    void _add_custom_loader(cls, func)
+
+    void _open_network(Writer* w)
+    void _close_network(Writer* w, int count)
 
 
 # make config
@@ -58,54 +67,81 @@ cdef class PicualLoadGenerator:
 # connection
 cdef class PicualDumpNet:
 
-    cdef int count;
-    cdef Writer* _writer
-    cdef object _sock
+    cdef int count
+    cdef int is_stream
+    cdef Writer* writer
+    cdef object sock
 
-    def __init__(self, str addr, int port):
+    def __init__(self, int is_stream, str addr, int port):
         self.count = 0;
-        self._sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        self._sock.bind((addr, port))
-        self._sock.setblocking(False)
-        self._sock.listen()
+        self.is_stream = is_stream
+        self.sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        self.sock.bind((addr, port))
+        self.sock.setblocking(False)
+        self.sock.listen()
+
+    def __del__(self):
+        self.close()
 
     @property
     def data(self):
-        return struct.pack('<BI', TYPE_MED_TUPLE, self.count) + self._writer.to_bytes()
+        return struct.pack('<BI', TYPE_MED_TUPLE, self.count) + self.writer.to_bytes()
 
     cpdef update(self):
-        try:
-            conn, addr = self._sock.accept()
-            data = b''
-            while True:
-                get = conn.recv(4096)
-                if get:
-                    data += get
-                else:
-                    break
-            self.count += 1
-            self._writer.write_bytes(data)
-        except BlockingIOError:
-            pass
+        while True:
+            try:
+                conn, addr = self.sock.accept()
+                data = b''
+                while True:
+                    get = conn.recv(4096)
+                    if get:
+                        data += get
+                    else:
+                        break
+                self.count += 1
+                self.writer.write_bytes(data)
+            except BlockingIOError:
+                return
 
     cpdef close(self):
-        self._sock.close()
+        self.sock.close()
+        if self.is_stream:
+            _close_network(self.writer, self.count)
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, *args, **kwargs):
+        self.close()
 
 cdef class PicualDumpNetConn:
 
-    cdef str _addr;
-    cdef int _port;
+    cdef str addr;
+    cdef int port;
 
     def __init__(self, str addr, int port):
-        self._addr = addr
-        self._port = port
+        self.addr = addr
+        self.port = port
 
     cpdef dump(self, obj):
         cdef bytes dump_data = dumps(obj)
         sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        sock.connect((self._addr, self._port))
+        sock.connect((self.addr, self.port))
         sock.send(dump_data)
         sock.close()
+
+# custom
+def custom_dumper(cls):
+    def custom_dumper_wrapper(func):
+        _add_custom_dumper(cls, func)
+        return func
+    return custom_dumper_wrapper
+
+def custom_loader(cls):
+    def custom_loader_wrapper(func):
+        _add_custom_loader(cls, func)
+        return func
+    return custom_loader_wrapper
 
 # object
 cpdef unpack_object(str c_name):
@@ -196,12 +232,25 @@ cpdef dump(obj, stream):
 cpdef bytes dumps(obj):
     return _dumps(obj)
 
+cpdef dump_to(obj, str filename):
+    with open(filename, 'wb') as dump_file:
+        _dump(obj, dump_file)
+
 cpdef PicualDumpNetConn dumpnc(str addr, int port):
     return PicualDumpNetConn(addr, port)
 
+cpdef PicualDumpNet dumpn(fileobj, str addr, int port):
+    cdef PicualDumpNet dnet = PicualDumpNet(True, addr, port)
+    dnet.writer = new StreamWriter(fileobj)
+    _open_network(dnet.writer)
+    return dnet
+
+cpdef PicualDumpNet dumpn_to(str filename, str addr, int port):
+    return dumpn(open(filename, 'wb'), addr, port)
+
 cpdef PicualDumpNet dumpns(str addr, int port):
-    cdef PicualDumpNet dnet = PicualDumpNet(addr, port)
-    dnet._writer = new BuffWriter()
+    cdef PicualDumpNet dnet = PicualDumpNet(False, addr, port)
+    dnet.writer = new BuffWriter()
     return dnet
 
 cpdef load(stream):
@@ -216,3 +265,7 @@ cpdef loadgs(bytes data):
     if gen.reader.is_wrong_type:
         raise TypeError('You can only load a generator from a list, tuple, or dictionary')
     return gen
+
+cpdef load_from(str filename):
+    with open(filename, 'rb') as load_file:
+        return _load(load_file)

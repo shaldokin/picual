@@ -47,6 +47,18 @@ BuffReaderGen* _loadgs(PyObject* py_data) {
 
 };
 
+// network
+void _open_network(Writer* w) {
+  write_num<unsigned char>(w, TYPE_LONG_LIST, 1);
+  write_num<long unsigned int>(w, 0, 8);
+};
+
+void _close_network(Writer* w, const long int count) {
+  PyObject_CallMethodObjArgs(((StreamWriter*)w)->stream, seek_name_obj, pos_1_obj, nullptr);
+  write_num<long unsigned int>(w, count, 8);
+  PyObject_CallMethodObjArgs(((StreamWriter*)w)->stream, close_name_obj, nullptr);
+};
+
 // references
 void _store_refr(PyObject* name, PyObject* obj) {
   char* refr_name = PyBytes_AsString(name);
@@ -55,9 +67,23 @@ void _store_refr(PyObject* name, PyObject* obj) {
   Py_INCREF(obj);
 };
 
+// custom
+void _add_custom_dumper(PyObject* cls, PyObject* func) {
+  Py_INCREF(cls);
+  Py_INCREF(func);
+  custom_dumper_func_by_class[cls] = func;
+  custom_dumper_class_by_func[func] = cls;
+};
+
+void _add_custom_loader(PyObject* cls, PyObject* func) {
+  Py_INCREF(cls);
+  Py_INCREF(func);
+  custom_loader_func_by_class[cls] = func;
+  custom_loader_class_by_func[func] = cls;
+};
+
 // integration
 void _init(PyObject* config) {
-
 
   eq_name = PyUnicode_FromString("__eq__");
   datetime_to_timestamp_name = PyUnicode_FromString("timestamp");
@@ -95,7 +121,12 @@ void _init(PyObject* config) {
 
   write_name_obj = PyUnicode_FromString("write");
   read_name_obj = PyUnicode_FromString("read");
+  seek_name_obj = PyUnicode_FromString("seek");
+  close_name_obj = PyUnicode_FromString("close");
+  pos_1_obj = PyLong_FromLong(1);
 
   reader_num_buffer = (char*)malloc(8);
+
+  custom_dumper_args = PyTuple_New(1);
 
 };

@@ -13,6 +13,12 @@ class Writer {
     unsigned int point_count = 1;
     const int check_point(PyObject* obj, unsigned int& point_index);
 
+    // custom
+    std::unordered_map<PyObject*, unsigned int> customs;
+    std::unordered_map<unsigned int, PyObject*> custom_dumpers;
+    unsigned int custom_count = 1;
+    const int check_custom(PyObject* obj, unsigned int& custom_index);
+
     // references
     std::unordered_map<PyObject*, unsigned int> refr_indices;
     unsigned int refr_count = 1;

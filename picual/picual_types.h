@@ -97,3 +97,12 @@
 #define TYPE_SHORT_REFR 64
 #define TYPE_MED_REFR 65
 #define TYPE_LONG_REFR 66
+
+// custom dumper
+#define TYPE_DEFINE_CUSTOM 67
+#define TYPE_SMALL_CUSTOM 68
+#define TYPE_SHORT_CUSTOM 69
+#define TYPE_MED_CUSTOM 70
+#define TYPE_LONG_CUSTOM 71
+
+

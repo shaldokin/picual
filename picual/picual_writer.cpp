@@ -66,6 +66,24 @@ const int Writer::check_refr(PyObject* obj, unsigned int& refr_id) {
     return 1;
 };
 
+// custom
+const int Writer::check_custom(PyObject* obj, unsigned int& custom_index) {
+  custom_index = this->customs[obj];
+  if (custom_count == 0) {
+    PyObject* cust = custom_dumper_func_by_class[obj];
+    if (cust == nullptr)
+      return 0;
+    else {
+      custom_index = this->custom_count;
+      this->custom_count++;
+      this->customs[obj] = custom_index;
+      this->custom_dumpers[custom_index] = cust;
+      return 1;
+    }
+  } else
+    return 0;
+};
+
 // classes
 unsigned int Writer::get_class(PyObject* cls) {
 
@@ -110,6 +128,7 @@ void write_branch(Writer* w, PyObject* container, unsigned int& index, const uns
   // start
   unsigned int r_index = 0;
   unsigned int refr_id = 0;
+  unsigned int custom_index = 0;
 
   // none
   if (obj == Py_None)
@@ -156,6 +175,14 @@ void write_branch(Writer* w, PyObject* container, unsigned int& index, const uns
   // point
   else if (w->check_point(obj, r_index))
     write_length(w, TYPE_SMALL_POINT, r_index);
+
+  // custom
+  else if (w->check_custom(obj, custom_index)) {
+    write_length(w, TYPE_SMALL_CUSTOM, custom_index);
+    PyTuple_SetItem(custom_dumper_args, 0, obj);
+    PyObject* c_data = PyObject_CallObject(w->custom_dumpers[custom_index], custom_dumper_args);
+    w->write_bytes(c_data);
+  }
 
   // list
   else if (PyList_Check(obj)) {

@@ -5,12 +5,14 @@
 #include <vector>
 #include <sstream>
 #include <iostream>
+#include <utility>
 #include "picual_types.h"
 
 // classes
 class Reader;
 class BuffReaderGen;
 class Writer;
+typedef std::pair<PyObject*, PyObject*> custom_cb_pair;
 typedef PyObject* (*py_get_function)(PyObject*, Py_ssize_t);
 typedef Py_ssize_t (*py_size_function)(PyObject*);
 typedef int (*py_check_func)(PyObject*);
@@ -26,11 +28,26 @@ PyObject* _load(PyObject* stream);
 PyObject* _loads(PyObject* data);
 BuffReaderGen* _loadgs(PyObject* data);
 
+// custom
+PyObject* custom_dumper_args;
+
+std::unordered_map<PyObject*, PyObject*> custom_dumper_func_by_class;
+std::unordered_map<PyObject*, PyObject*> custom_dumper_class_by_func;
+void _add_custom_dumper(PyObject* cls, PyObject* func);
+
+std::unordered_map<PyObject*, PyObject*> custom_loader_func_by_class;
+std::unordered_map<PyObject*, PyObject*> custom_loader_class_by_func;
+void _add_custom_loader(PyObject* cls, PyObject* func);
+
 // references
 std::unordered_map<std::string, PyObject*> refr_objs;
 std::unordered_map<PyObject*, const char*> refr_ids;
 
 void _store_refr(PyObject* name, PyObject* obj);
+
+// network
+void _open_network(Writer* w);
+void _close_network(Writer* w, const long int count);
 
 // integration
 PyObject* eq_name;
@@ -62,5 +79,8 @@ PyObject* get_state_obj;
 PyObject* set_state_obj;
 PyObject* read_name_obj;
 PyObject* write_name_obj;
+PyObject* seek_name_obj;
+PyObject* pos_1_obj;
+PyObject* close_name_obj;
 
 void _init(PyObject* config);
