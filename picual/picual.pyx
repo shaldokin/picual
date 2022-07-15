@@ -4,12 +4,12 @@
 
 # import dependencies
 import datetime, hashlib, importlib, pickle
-import socket, struct, sys
+import threading, socket, struct, sys, time
 
 # extern
 cdef extern from "picual_c.cpp":
 
-    cdef int TYPE_MED_TUPLE
+    cdef int TYPE_LONG_LIST
 
     cdef cppclass Reader:
         pass
@@ -76,48 +76,82 @@ cdef class PicualDumpNet:
     cdef int is_stream
     cdef Writer* writer
     cdef object sock
+    cdef int thread_over
+    cdef int use_thread
+    cdef object thread
 
-    def __init__(self, int is_stream, str addr, int port):
+    def __init__(self, int is_stream, str addr, int port, int use_thread):
         self.count = 0;
         self.is_stream = is_stream
-        self.sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        self.sock.bind((addr, port))
-        self.sock.setblocking(False)
-        self.sock.listen()
+        self.use_thread = use_thread
+        if use_thread:
+            self.thread_over = 0
+            self.thread = threading.Thread(target=dump_net_thread, args=(self, addr, port, lambda: self.thread_over))
+            self.thread.start()
+            time.sleep(0.1)
+        else:
+            self.sock = open_socket_for_dump_net(self, addr, port)
 
     def __del__(self):
         self.close()
 
     @property
     def data(self):
-        return struct.pack('<BI', TYPE_MED_TUPLE, self.count) + self.writer.to_bytes()
+        if self.is_stream:
+            return b''
+        else:
+            return struct.pack('<BQ', TYPE_LONG_LIST, self.count) + self.writer.to_bytes()
 
     cpdef update(self):
-        while True:
-            try:
-                conn, addr = self.sock.accept()
-                data = b''
-                while True:
-                    get = conn.recv(4096)
-                    if get:
-                        data += get
-                    else:
-                        break
-                self.count += 1
-                self.writer.write_bytes(data)
-            except BlockingIOError:
-                return
+        while update_dump_net(self, self.sock):
+            pass
 
     cpdef close(self):
-        self.sock.close()
+        self.thread_over = 1
         if self.is_stream:
             _close_network(self.writer, self.count)
+        if self.use_thread:
+            self.thread.join()
+        else:
+            self.update()
+            self.sock.close()
 
     def __enter__(self):
         return self
 
     def __exit__(self, *args, **kwargs):
         self.close()
+
+cdef open_socket_for_dump_net(PicualDumpNet net, str addr, int port):
+    sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    sock.bind((addr, port))
+    sock.setblocking(False)
+    sock.listen()
+    return sock
+
+cpdef dump_net_thread(self, str addr, int port, thread_over):
+    sock = open_socket_for_dump_net(self, addr, port)
+    while not thread_over():
+        update_dump_net(self, sock)
+    update_dump_net(self, sock)
+    sock.close()
+
+cdef int update_dump_net(PicualDumpNet net, sock):
+    cdef bytes data = b''
+    cdef bytes get
+    try:
+        conn, addr = sock.accept()
+        while 1:
+            get = conn.recv(4096)
+            if get:
+                data += get
+            else:
+                break
+            net.count += 1
+            net.writer.write_bytes(data)
+        return 1
+    except BlockingIOError:
+        return 0
 
 cdef class PicualDumpNetConn:
 
@@ -244,17 +278,17 @@ cpdef dump_to(obj, str filename):
 cpdef PicualDumpNetConn dumpnc(str addr, int port):
     return PicualDumpNetConn(addr, port)
 
-cpdef PicualDumpNet dumpn(fileobj, str addr, int port):
-    cdef PicualDumpNet dnet = PicualDumpNet(True, addr, port)
+cpdef PicualDumpNet dumpn(fileobj, str addr, int port, use_thread=False):
+    cdef PicualDumpNet dnet = PicualDumpNet(True, addr, port, use_thread)
     dnet.writer = new StreamWriter(fileobj)
     _open_network(dnet.writer)
     return dnet
 
-cpdef PicualDumpNet dumpn_to(str filename, str addr, int port):
-    return dumpn(open(filename, 'wb'), addr, port)
+cpdef PicualDumpNet dumpn_to(str filename, str addr, int port, use_thread=False):
+    return dumpn(open(filename, 'wb'), addr, port, use_thread)
 
-cpdef PicualDumpNet dumpns(str addr, int port):
-    cdef PicualDumpNet dnet = PicualDumpNet(False, addr, port)
+cpdef PicualDumpNet dumpns(str addr, int port, use_thread=False):
+    cdef PicualDumpNet dnet = PicualDumpNet(False, addr, port, use_thread)
     dnet.writer = new BuffWriter()
     return dnet
 

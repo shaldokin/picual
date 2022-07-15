@@ -62,6 +62,7 @@ with picual.dumpns('localhost', 1234) as net_dumper:
 If using the `with` protocol, the dumper will close automatically on exit.
 
 Also you must run the `update()` method for the dumper to collect data.
+However if you set the constructor paramater `update_thread` to true, it will automatically update in a new thread.
 
 If dumping to a buffer with `dumpns`, you can access the data with the `data` property.
 
