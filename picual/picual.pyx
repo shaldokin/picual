@@ -6,15 +6,6 @@
 import datetime, hashlib, importlib, pickle
 import threading, socket, struct, sys, time
 
-# import numpy
-cdef int numpy_imported = 0
-try:
-    import numpy as np
-    cimport numpy as c_np
-    numpy_imported = 1
-except ImportError:
-    pass
-
 # extern
 cdef extern from "picual_c.cpp":
 

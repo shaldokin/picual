@@ -2,11 +2,6 @@
 from distutils.core import setup
 from distutils.extension import Extension
 from Cython.Distutils import build_ext
-try:
-    import numpy as np
-    include_dirs = [np.get_include()]
-except ImportError:
-    include_dirs = []
 
 setup(
     name='picual',
@@ -26,6 +21,5 @@ setup(
         Extension('picual', sources=['picual/picual.pyx'], language='c++')
     ],
     cmdclass={'build_ext': build_ext},
-    include_dirs=include_dirs,
 )
 
