@@ -4,7 +4,8 @@ Picual is an alternative pickling library that allows for some extra functionali
 * load a pickled tuple/list/dict as a generator
 * map singletons or other non-picklable objects to a reference, allowing simpler multiprocessing
 * dumping over a network
-* emphasis on compression
+* some basic compression
+* custom loaders and dumpers for classes
 * fully compatible with standard pickling
 
 ## Installation
@@ -62,7 +63,7 @@ with picual.dumpns('localhost', 1234) as net_dumper:
 If using the `with` protocol, the dumper will close automatically on exit.
 
 Also you must run the `update()` method for the dumper to collect data.
-However if you set the constructor paramater `update_thread` to true, it will automatically update in a new thread.
+However if you set the constructor paramater `use_thread` to true, it will automatically update in a new thread.
 
 If dumping to a buffer with `dumpns`, you can access the data with the `data` property.
 
@@ -93,3 +94,20 @@ This is especially useful for when local functions are created within functions.
 If you have a large tuple, list, or even dictionary stored in a file, you can open the file as a generator and just load on object at a time.
 You can do so using `loadg(file)`, `loadg_from(filename)`, or `loadgs(data)`.
 
+
+## Custom Dumpers and Loaders
+You can easily add custom dumpers and loaders for any class like so
+```python
+import picual
+import numpy as np
+
+@picual.custom_dumper(np.ndarray)
+def dump_np(obj):
+    return obj.tobytes()
+
+
+@picual.custom_loader(np.ndarray)
+def load_np(data):
+    return np.frombuffer(data)
+```
+Whatever value is returned will simply be picualed.

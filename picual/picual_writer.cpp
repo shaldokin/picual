@@ -68,30 +68,44 @@ const int Writer::check_refr(PyObject* obj, unsigned int& refr_id) {
 
 // custom
 const int Writer::check_custom(PyObject* obj, unsigned int& custom_index) {
-  custom_index = this->customs[obj];
-  if (custom_count == 0) {
-    PyObject* cust = custom_dumper_func_by_class[obj];
+  PyObject* classobj = PyObject_GetAttrString(obj, "__class__");
+  custom_index = this->customs[classobj];
+  if (custom_index == 0) {
+    PyObject* cust = custom_dumper_func_by_class[classobj];
     if (cust == nullptr)
       return 0;
     else {
+
+      // get name of class
+      const char* name_str;
+      long int name_len;
+      get_class_name(obj, name_str, name_len);
+
+      // define class
+      write_num<unsigned char>(this, TYPE_DEFINE_CUSTOM, 1);
+      write_num<unsigned char>(this, name_len, 1);
+      this->write(name_str, name_len);
+
+      // assign index
       custom_index = this->custom_count;
       this->custom_count++;
-      this->customs[obj] = custom_index;
+      this->customs[classobj] = custom_index;
       this->custom_dumpers[custom_index] = cust;
+
+      // finished!
       return 1;
     }
   } else
-    return 0;
+    return 1;
 };
 
 // classes
 unsigned int Writer::get_class(PyObject* cls) {
 
   // get name
-  PyTuple_SetItem(get_class_name_func_args, 0, cls);
-  auto name_obj = PyObject_CallObject(get_class_name_func, get_class_name_func_args);
-  auto name_str = (const char*)PyUnicode_DATA(name_obj);
-  auto name_len = PyUnicode_GET_LENGTH(name_obj);
+  const char* name_str;
+  long int name_len;
+  get_class_name(cls, name_str, name_len);
 
   // get/make index
   auto c_index = this->classes[name_str];
@@ -181,7 +195,7 @@ void write_branch(Writer* w, PyObject* container, unsigned int& index, const uns
     write_length(w, TYPE_SMALL_CUSTOM, custom_index);
     PyTuple_SetItem(custom_dumper_args, 0, obj);
     PyObject* c_data = PyObject_CallObject(w->custom_dumpers[custom_index], custom_dumper_args);
-    w->write_bytes(c_data);
+    w->write_obj(c_data);
   }
 
   // list

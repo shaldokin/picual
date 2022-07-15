@@ -3,6 +3,7 @@ __pycache__
 *.so
 *.pyd
 test.py
+test2.py
 venv
 .idea
 *.DS_Store

@@ -29,6 +29,9 @@ PyObject* _loads(PyObject* data);
 ReaderGen* _loadg(PyObject* file);
 ReaderGen* _loadgs(PyObject* data);
 
+//
+void get_class_name(PyObject* obj, const char*& name, long int& len);
+
 // custom
 PyObject* custom_dumper_args;
 
@@ -52,7 +55,7 @@ void _close_network(Writer* w, const long int count);
 
 // integration
 PyObject* eq_name;
-const char* get_class_name;
+const char* get_class_name_name;
 PyObject* datetime_class;
 PyObject* datetime_to_timestamp_name;
 PyObject* pack_datetime_func;
@@ -83,5 +86,6 @@ PyObject* write_name_obj;
 PyObject* seek_name_obj;
 PyObject* pos_1_obj;
 PyObject* close_name_obj;
+PyObject* get_obj_from_refr;
 
 void _init(PyObject* config);

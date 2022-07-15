@@ -6,6 +6,15 @@
 import datetime, hashlib, importlib, pickle
 import threading, socket, struct, sys, time
 
+# import numpy
+cdef int numpy_imported = 0
+try:
+    import numpy as np
+    cimport numpy as c_np
+    numpy_imported = 1
+except ImportError:
+    pass
+
 # extern
 cdef extern from "picual_c.cpp":
 
@@ -26,6 +35,7 @@ cdef extern from "picual_c.cpp":
     cdef cppclass Writer:
         to_bytes()
         void write_bytes(obj)
+        void write_obj(obj)
 
     cdef cppclass BuffWriter(Writer):
         pass
@@ -102,6 +112,10 @@ cdef class PicualDumpNet:
         else:
             return struct.pack('<BQ', TYPE_LONG_LIST, self.count) + self.writer.to_bytes()
 
+    @property
+    def redumped(self):
+        return dumps(loads(self.data))
+
     cpdef update(self):
         while update_dump_net(self, self.sock):
             pass
@@ -132,8 +146,8 @@ cdef open_socket_for_dump_net(PicualDumpNet net, str addr, int port):
 cpdef dump_net_thread(self, str addr, int port, thread_over):
     sock = open_socket_for_dump_net(self, addr, port)
     while not thread_over():
-        update_dump_net(self, sock)
-    update_dump_net(self, sock)
+        while update_dump_net(self, sock):
+            pass
     sock.close()
 
 cdef int update_dump_net(PicualDumpNet net, sock):
@@ -148,7 +162,8 @@ cdef int update_dump_net(PicualDumpNet net, sock):
             else:
                 break
             net.count += 1
-            net.writer.write_bytes(data)
+            obj = loads(data)
+            net.writer.write_obj(obj)
         return 1
     except BlockingIOError:
         return 0
@@ -169,6 +184,7 @@ cdef class PicualDumpNetConn:
         sock.send(dump_data)
         sock.close()
 
+
 # custom
 def custom_dumper(cls):
     def custom_dumper_wrapper(func):
@@ -181,6 +197,7 @@ def custom_loader(cls):
         _add_custom_loader(cls, func)
         return func
     return custom_loader_wrapper
+
 
 # object
 cpdef unpack_object(str c_name):
@@ -318,5 +335,4 @@ cpdef loadgs(bytes data):
     if gen.reader.is_wrong_type:
         raise TypeError('You can only load a generator from a list, tuple, or dictionary')
     return gen
-
 

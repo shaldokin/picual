@@ -71,6 +71,14 @@ void _store_refr(PyObject* name, PyObject* obj) {
   Py_INCREF(obj);
 };
 
+// util
+void get_class_name(PyObject* cls, const char*& name, long int& len) {
+  PyTuple_SetItem(get_class_name_func_args, 0, cls);
+  auto name_obj = PyObject_CallObject(get_class_name_func, get_class_name_func_args);
+  name = strdup((const char*)PyUnicode_DATA(name_obj));
+  len = PyUnicode_GET_LENGTH(name_obj);
+};
+
 // custom
 void _add_custom_dumper(PyObject* cls, PyObject* func) {
   Py_INCREF(cls);
@@ -91,7 +99,7 @@ void _init(PyObject* config) {
 
   eq_name = PyUnicode_FromString("__eq__");
   datetime_to_timestamp_name = PyUnicode_FromString("timestamp");
-  get_class_name = "__class__";
+  get_class_name_name = "__class__";
 
   datetime_class = PyDict_GetItemString(config, "datetime_class");
   pack_datetime_func = PyDict_GetItemString(config, "pack_datetime");
@@ -111,6 +119,7 @@ void _init(PyObject* config) {
   pickle_load_func = PyDict_GetItemString(config, "pickle_load");
   pickle_load_func_args = PyTuple_New(1);
 
+  get_obj_from_refr = PyDict_GetItemString(config, "get_obj_from_refr");
   get_class_name_func = PyDict_GetItemString(config, "get_class_name");
   get_class_name_func_args = PyTuple_New(1);
 

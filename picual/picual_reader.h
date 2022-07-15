@@ -19,6 +19,12 @@ class Reader {
     unsigned int point_count = 1;
     void add_point(PyObject* obj, const unsigned int defp=0);
 
+    // custom
+    std::unordered_map<PyObject*, unsigned int> customs;
+    std::unordered_map<unsigned int, PyObject*> custom_loaders;
+    unsigned int custom_count = 1;
+    PyObject* get_custom(const char name);
+
     // references
     std::unordered_map<unsigned int, PyObject*> refrs;
     unsigned int refr_count = 1;

@@ -182,6 +182,7 @@ void read_next(Reader* r, const bool is_gen, const unsigned char c_type, PyObjec
 
   // get branch
   unsigned char branch = read_num<unsigned char>(r, 1);
+  PyObject* custom_loader;
 
   // class definition?
   if (branch == TYPE_DEFINE_CLASS) {
@@ -190,6 +191,23 @@ void read_next(Reader* r, const bool is_gen, const unsigned char c_type, PyObjec
     r->read(c_name, c_len);
     c_name[c_len] = 0;
     r->get_class(c_name);
+    read_next(r, is_gen, c_type, cont, index);
+    free(c_name);
+  }
+
+  // custom load definition?
+  else if (branch == TYPE_DEFINE_CUSTOM) {
+
+    unsigned char c_len = read_num<unsigned char>(r, 1);
+    char* c_name = (char*)malloc(c_len + 1);
+    r->read(c_name, c_len);
+    c_name[c_len] = 0;
+
+    unsigned int c_id = r->custom_count;
+    PyObject* c_obj = PyObject_CallFunctionObjArgs(get_obj_from_refr, PyUnicode_FromStringAndSize(c_name, c_len), nullptr);
+    r->custom_loaders[c_id] = custom_loader_func_by_class[c_obj];
+    r->custom_count++;
+
     read_next(r, is_gen, c_type, cont, index);
     free(c_name);
   }
@@ -494,7 +512,6 @@ PyObject* read_from_branch(Reader* r, const unsigned char branch) {
     PyObject* o_out = PyObject_CallObject(unpack_object_func, unpack_object_func_args);
     r->add_point(o_out);
 
-
     // load the state
     PyObject* o_state = Py_None;
     unsigned int o_index = 0;
@@ -532,6 +549,23 @@ PyObject* read_from_branch(Reader* r, const unsigned char branch) {
     unsigned int r_index = read_length(r, branch, TYPE_SMALL_POINT);
     PyObject* point = r->points_from_indices[r_index];
     return point;
+  }
+
+  // custom
+  else if (branch >= TYPE_SMALL_CUSTOM && branch <= TYPE_LONG_CUSTOM) {
+
+    // get loader
+    unsigned int c_index = read_length(r, branch, TYPE_SMALL_CUSTOM);
+    PyObject* c_loader = r->custom_loaders[c_index];
+
+    // load the state
+    PyObject* o_state = Py_None;
+    unsigned int o_index = 0;
+    read_next(r, false, 0, o_state, o_index);
+
+    // return the object
+    return PyObject_CallFunctionObjArgs(c_loader, o_state, nullptr);
+
   }
 
 }
