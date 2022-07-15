@@ -39,11 +39,11 @@ net_dumper = picual.dumpns('localhost', 1234)
 ```
 You can either use `dumpn(file, addr, port)`, `dumpn_to(filename, addr, port)` or `dumpns(addr, port)`.
 
-You dump to the connection by opening a connect with `dumpc` and then dumping to it.
+You dump to the connection by opening a connect with `dumpnc` and then dumping to it.
 ```python
 import picual
 
-conn = picual.dumpc('localhost', 1234)
+conn = picual.dumpnc('localhost', 1234)
 
 conn.dump(123)
 conn.dump('picualing is fun')
