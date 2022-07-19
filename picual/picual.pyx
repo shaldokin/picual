@@ -300,13 +300,13 @@ cpdef dump_to(obj, str filename):
         _dump(obj, dump_file)
 
 cpdef PicualDumpGen dumpg(fileobj):
-    cdef PicualDumpGen dgen = PicualDumpNet(True)
+    cdef PicualDumpGen dgen = PicualDumpGen(True)
     dgen.writer = new StreamWriter(fileobj)
     _open_dump_gen(dgen.writer)
     return dgen
 
 cpdef PicualDumpGen dumpgs():
-    cdef PicualDumpGen dgen = PicualDumpNet(False)
+    cdef PicualDumpGen dgen = PicualDumpGen(False)
     dgen.writer = new BuffWriter()
     return dgen
 
