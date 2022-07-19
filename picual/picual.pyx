@@ -47,8 +47,10 @@ cdef extern from "picual_c.cpp":
     void _add_custom_dumper(cls, func)
     void _add_custom_loader(cls, func)
 
-    void _open_network(Writer* w)
-    void _close_network(Writer* w, int count)
+    void _open_dump_gen(Writer* w)
+    void _close_dump_gen(Writer* w, int count)
+
+    void _set_before_dump(obj)
 
 
 # make config
@@ -70,28 +72,16 @@ cdef class PicualLoadGenerator:
             yield self.reader.gen_next()
         self.reader.reset()
 
-# connection
-cdef class PicualDumpNet:
+# gen
+cdef class PicualDumpGen:
 
     cdef int count
     cdef int is_stream
     cdef Writer* writer
-    cdef object sock
-    cdef int thread_over
-    cdef int use_thread
-    cdef object thread
 
-    def __init__(self, int is_stream, str addr, int port, int use_thread):
-        self.count = 0;
+    def __init__(self, int is_stream):
+        self.count = 0
         self.is_stream = is_stream
-        self.use_thread = use_thread
-        if use_thread:
-            self.thread_over = 0
-            self.thread = threading.Thread(target=dump_net_thread, args=(self, addr, port, lambda: self.thread_over))
-            self.thread.start()
-            time.sleep(0.1)
-        else:
-            self.sock = open_socket_for_dump_net(self, addr, port)
 
     def __del__(self):
         self.close()
@@ -107,25 +97,50 @@ cdef class PicualDumpNet:
     def redumped(self):
         return dumps(loads(self.data))
 
-    cpdef update(self):
-        while update_dump_net(self, self.sock):
-            pass
-
     cpdef close(self):
-        self.thread_over = 1
         if self.is_stream:
-            _close_network(self.writer, self.count)
-        if self.use_thread:
-            self.thread.join()
-        else:
-            self.update()
-            self.sock.close()
+            _close_dump_gen(self.writer, self.count)
 
     def __enter__(self):
         return self
 
     def __exit__(self, *args, **kwargs):
         self.close()
+
+
+# connection
+cdef class PicualDumpNet(PicualDumpGen):
+
+    cdef object sock
+    cdef int thread_over
+    cdef int use_thread
+    cdef object thread
+    cdef int connections_left
+
+    def __init__(self, int is_stream, str addr, int port, int use_thread):
+        self.connections_left = 0
+        self.is_stream = is_stream
+        self.use_thread = use_thread
+        if use_thread:
+            self.thread_over = 0
+            self.thread = threading.Thread(target=dump_net_thread, args=(self, addr, port, lambda: self.thread_over))
+            self.thread.start()
+            time.sleep(0.1)
+        else:
+            self.sock = open_socket_for_dump_net(self, addr, port)
+
+    cpdef update(self):
+        while update_dump_net(self, self.sock):
+            pass
+
+    cpdef close(self):
+        self.thread_over = 1
+        PicualDumpGen.close(self)
+        if self.use_thread:
+            self.thread.join()
+        else:
+            self.update()
+            self.sock.close()
 
 cdef open_socket_for_dump_net(PicualDumpNet net, str addr, int port):
     sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
@@ -175,7 +190,6 @@ cdef class PicualDumpNetConn:
         sock.send(dump_data)
         sock.close()
 
-
 # custom
 def custom_dumper(cls):
     def custom_dumper_wrapper(func):
@@ -189,6 +203,9 @@ def custom_loader(cls):
         return func
     return custom_loader_wrapper
 
+def before_dump(func):
+    _set_before_dump(func)
+    return func
 
 # object
 cpdef unpack_object(str c_name):
@@ -243,7 +260,6 @@ def store_refr(str name, obj=None):
         _store_refr(r_name, obj)
         return obj
 
-
 cpdef get_obj_from_refr(str name):
 
     cdef str m_name
@@ -269,9 +285,6 @@ cpdef bytes store_refr_name(str name):
         return hashlib.md5(name.encode()).digest()
 picual_config['store_refr_name'] = store_refr_name
 
-# initialize
-_init(picual_config)
-
 # picual functionality
 cpdef dump(obj, stream):
     _dump(obj, stream)
@@ -283,13 +296,27 @@ cpdef dump_to(obj, str filename):
     with open(filename, 'wb') as dump_file:
         _dump(obj, dump_file)
 
+cpdef PicualDumpGen dumpg(fileobj):
+    cdef PicualDumpGen dgen = PicualDumpNet(True)
+    dgen.writer = new StreamWriter(fileobj)
+    _open_dump_gen(dgen.writer)
+    return dgen
+
+cpdef PicualDumpGen dumpgs():
+    cdef PicualDumpGen dgen = PicualDumpNet(False)
+    dgen.writer = new BuffWriter()
+    return dgen
+
+cpdef PicualDumpGen dumpg_to(str filename):
+    return dumpg(open(filename, 'wb'))
+
 cpdef PicualDumpNetConn dumpnc(str addr, int port):
     return PicualDumpNetConn(addr, port)
 
 cpdef PicualDumpNet dumpn(fileobj, str addr, int port, use_thread=False):
     cdef PicualDumpNet dnet = PicualDumpNet(True, addr, port, use_thread)
     dnet.writer = new StreamWriter(fileobj)
-    _open_network(dnet.writer)
+    _open_dump_gen(dnet.writer)
     return dnet
 
 cpdef PicualDumpNet dumpn_to(str filename, str addr, int port, use_thread=False):
@@ -327,3 +354,5 @@ cpdef loadgs(bytes data):
         raise TypeError('You can only load a generator from a list, tuple, or dictionary')
     return gen
 
+# initialize
+_init(picual_config)

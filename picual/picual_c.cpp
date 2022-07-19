@@ -52,16 +52,18 @@ ReaderGen* _loadgs(PyObject* py_data) {
 };
 
 // network
-void _open_network(Writer* w) {
+void _open_dump_gen(Writer* w) {
   write_num<unsigned char>(w, TYPE_LONG_LIST, 1);
   write_num<long unsigned int>(w, 0, 8);
 };
 
-void _close_network(Writer* w, const long int count) {
+void _close_dump_gen(Writer* w, const long int count) {
   PyObject_CallMethodObjArgs(((StreamWriter*)w)->stream, seek_name_obj, pos_1_obj, nullptr);
   write_num<long unsigned int>(w, count, 8);
   PyObject_CallMethodObjArgs(((StreamWriter*)w)->stream, close_name_obj, nullptr);
 };
+
+
 
 // references
 void _store_refr(PyObject* name, PyObject* obj) {
@@ -93,6 +95,21 @@ void _add_custom_loader(PyObject* cls, PyObject* func) {
   custom_loader_func_by_class[cls] = func;
   custom_loader_class_by_func[func] = cls;
 };
+
+
+void _set_before_dump(PyObject* func) {
+  Py_XINCREF(func);
+  Py_XDECREF(before_dump_func);
+  before_dump_func = func;
+};
+
+PyObject* before_dump(PyObject* data) {
+  if (before_dump_func == nullptr)
+    return data;
+  else
+    return PyObject_CallFunctionObjArgs(before_dump_func, data, nullptr);
+};
+
 
 // integration
 void _init(PyObject* config) {

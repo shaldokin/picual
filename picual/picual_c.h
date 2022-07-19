@@ -49,9 +49,15 @@ std::unordered_map<PyObject*, const char*> refr_ids;
 
 void _store_refr(PyObject* name, PyObject* obj);
 
-// network
-void _open_network(Writer* w);
-void _close_network(Writer* w, const long int count);
+// dump gen
+void _open_dump_gen(Writer* w);
+void _close_close_gen(Writer* w, const long int count);
+
+// customization
+PyObject* before_dump_func = nullptr;
+PyObject* before_dump(PyObject* data);
+void _set_before_dump(PyObject* func);
+
 
 // integration
 PyObject* eq_name;

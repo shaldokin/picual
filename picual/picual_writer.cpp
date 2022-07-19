@@ -38,7 +38,7 @@ void Writer::write_bytes(PyObject* obj) {
 
 void Writer::write_obj(PyObject* obj) {
   unsigned int index = 0;
-  write_branch(this, nullptr, index, 0, nullptr, obj);
+  write_branch(this, nullptr, index, 0, nullptr, before_dump(obj));
 };
 
 PyObject* Writer::to_bytes() {
