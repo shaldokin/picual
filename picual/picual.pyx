@@ -87,6 +87,7 @@ cdef class PicualDumpGen:
         self.close()
 
     def dump(self, obj):
+        self.count += 1
         self.writer.write_obj(obj)
 
     @property
