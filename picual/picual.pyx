@@ -86,6 +86,9 @@ cdef class PicualDumpGen:
     def __del__(self):
         self.close()
 
+    def dump(self, obj):
+        self.writer.write_obj(obj)
+
     @property
     def data(self):
         if self.is_stream:
