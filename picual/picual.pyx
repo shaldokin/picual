@@ -52,7 +52,6 @@ cdef extern from "picual_c.cpp":
 
     void _set_before_dump(obj)
 
-
 # make config
 cdef dict picual_config = {}
 
@@ -264,13 +263,14 @@ def store_refr(str name, obj=None):
         _store_refr(r_name, obj)
         return obj
 
+
 cpdef get_obj_from_refr(str name):
 
     cdef str m_name
-    m_name = name[:name.find('.')]
+    m_name = name[:name.rfind('.')]
 
     cdef str c_name
-    c_name = name[name.find('.'):]
+    c_name = name[name.rfind('.'):]
 
     cdef str e_str
     e_str = f'sys.modules["{m_name}"]{c_name}'
