@@ -9,6 +9,9 @@ import threading, socket, struct, sys, time
 # extern
 cdef extern from "picual_c.cpp":
 
+    _test()
+    void print_rcount(obj)
+
     cdef int TYPE_LONG_LIST
 
     cdef cppclass Reader:

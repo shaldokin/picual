@@ -4,6 +4,15 @@
 #include "picual_writer.cpp"
 #include "picual_reader.cpp"
 
+// debug
+void print(PyObject* obj) {
+  std::cout << (const char*)PyUnicode_DATA(PyObject_Repr(obj)) << "\n";
+};
+
+void print_rcount(PyObject* obj) {
+  std::cout << obj->ob_refcnt << "\n";
+};
+
 // functionality
 void _dump(PyObject* obj, PyObject* stream) {
   StreamWriter writer(stream);
@@ -68,15 +77,14 @@ void _close_dump_gen(Writer* w, const long int count) {
 // references
 void _store_refr(PyObject* name, PyObject* obj) {
   char* refr_name = PyBytes_AsString(name);
+  Py_INCREF(obj);
   refr_ids[obj] = strdup(refr_name);
   refr_objs[refr_name] = obj;
-  Py_INCREF(obj);
 };
 
 // util
 void get_class_name(PyObject* cls, const char*& name, long int& len) {
-  PyTuple_SetItem(get_class_name_func_args, 0, cls);
-  auto name_obj = PyObject_CallObject(get_class_name_func, get_class_name_func_args);
+  auto name_obj = PyObject_CallFunctionObjArgs(get_class_name_func, cls, nullptr);
   name = strdup((const char*)PyUnicode_DATA(name_obj));
   len = PyUnicode_GET_LENGTH(name_obj);
 };
@@ -121,27 +129,19 @@ void _init(PyObject* config) {
   datetime_class = PyDict_GetItemString(config, "datetime_class");
   pack_datetime_func = PyDict_GetItemString(config, "pack_datetime");
   Py_INCREF(pack_datetime_func);
-  pack_datetime_func_args = PyTuple_New(1);
   unpack_datetime_func = PyDict_GetItemString(config, "unpack_datetime");
-  unpack_datetime_func_args = PyTuple_New(1);
 
   timedelta_class = PyDict_GetItemString(config, "timedelta_class");
   pack_timedelta_func = PyDict_GetItemString(config, "pack_timedelta");
-  pack_timedelta_func_args = PyTuple_New(1);
   unpack_timedelta_func = PyDict_GetItemString(config, "unpack_timedelta");
-  unpack_timedelta_func_args = PyTuple_New(1);
 
   pickle_dump_func = PyDict_GetItemString(config, "pickle_dump");
-  pickle_dump_func_args = PyTuple_New(1);
   pickle_load_func = PyDict_GetItemString(config, "pickle_load");
-  pickle_load_func_args = PyTuple_New(1);
 
   get_obj_from_refr = PyDict_GetItemString(config, "get_obj_from_refr");
   get_class_name_func = PyDict_GetItemString(config, "get_class_name");
-  get_class_name_func_args = PyTuple_New(1);
 
   unpack_object_func = PyDict_GetItemString(config, "unpack_object");
-  unpack_object_func_args = PyTuple_New(1);
 
   get_name_name = "__name__";
   get_module_name = "__module__";
@@ -156,7 +156,5 @@ void _init(PyObject* config) {
   pos_1_obj = PyLong_FromLong(1);
 
   reader_num_buffer = (char*)malloc(8);
-
-  custom_dumper_args = PyTuple_New(1);
 
 };

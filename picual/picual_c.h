@@ -8,6 +8,10 @@
 #include <utility>
 #include "picual_types.h"
 
+// debug
+void print(PyObject* obj);
+void print_rcount(PyObject* obj);
+
 // classes
 class Reader;
 class BuffReaderGen;
@@ -16,6 +20,8 @@ typedef std::pair<PyObject*, PyObject*> custom_cb_pair;
 typedef PyObject* (*py_get_function)(PyObject*, Py_ssize_t);
 typedef Py_ssize_t (*py_size_function)(PyObject*);
 typedef int (*py_check_func)(PyObject*);
+typedef std::vector<PyObject*> py_vector;
+typedef std::unordered_map<PyObject*, unsigned int> py_obj_uint_map;
 
 // source
 #include "picual_writer.h"
@@ -33,8 +39,6 @@ ReaderGen* _loadgs(PyObject* data);
 void get_class_name(PyObject* obj, const char*& name, long int& len);
 
 // custom
-PyObject* custom_dumper_args;
-
 std::unordered_map<PyObject*, PyObject*> custom_dumper_func_by_class;
 std::unordered_map<PyObject*, PyObject*> custom_dumper_class_by_func;
 void _add_custom_dumper(PyObject* cls, PyObject* func);
@@ -65,22 +69,14 @@ const char* get_class_name_name;
 PyObject* datetime_class;
 PyObject* datetime_to_timestamp_name;
 PyObject* pack_datetime_func;
-PyObject* pack_datetime_func_args;
 PyObject* unpack_datetime_func;
-PyObject* unpack_datetime_func_args;
 PyObject* timedelta_class;
 PyObject* pack_timedelta_func;
-PyObject* pack_timedelta_func_args;
 PyObject* unpack_timedelta_func;
-PyObject* unpack_timedelta_func_args;
 PyObject* pickle_dump_func;
-PyObject* pickle_dump_func_args;
 PyObject* pickle_load_func;
-PyObject* pickle_load_func_args;
 PyObject* unpack_object_func;
-PyObject* unpack_object_func_args;
 PyObject* get_class_name_func;
-PyObject* get_class_name_func_args;
 const char* get_is_name;
 const char* get_name_name;
 const char* get_module_name;

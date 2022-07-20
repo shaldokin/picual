@@ -2,16 +2,20 @@
 // construction / destruction
 BuffWriter::BuffWriter() {
   this->buff = (char*)malloc(0);
+  this->_init();
 };
 BuffWriter::~BuffWriter() {
+  this->_init();
   free(this->buff);
 };
 
 StreamWriter::StreamWriter(PyObject* stream) {
   Py_INCREF(stream);
   this->stream = stream;
+  this->_init();
 };
 StreamWriter::~StreamWriter() {
+  this->_init();
   Py_DECREF(this->stream);
 };
 
@@ -57,6 +61,8 @@ const int Writer::check_refr(PyObject* obj, unsigned int& refr_id) {
     if (refr_name != nullptr) {
       write_str<unsigned char>(this, TYPE_DEFINE_REFR, refr_name, strlen(refr_name), 1);
       refr_id = this->refr_count;
+      Py_XINCREF(obj);
+      this->all_refrs.push_back(obj);
       this->refr_indices[obj] = refr_id;
       this->refr_count++;
       return 1;
@@ -91,6 +97,8 @@ const int Writer::check_custom(PyObject* obj, unsigned int& custom_index) {
       this->custom_count++;
       this->customs[classobj] = custom_index;
       this->custom_dumpers[custom_index] = cust;
+      Py_XINCREF(obj);
+      this->all_customs.push_back(obj);
 
       // finished!
       return 1;
@@ -129,6 +137,8 @@ const int Writer::check_point(PyObject* obj, unsigned int& point_index) {
   point_index = this->points[obj];
   if (point_index == 0) {
     point_index = this->point_count;
+    Py_XINCREF(obj);
+    this->all_points.push_back(obj);
     this->points[obj] = point_index;
     this->point_count++;
     return 0;
@@ -193,8 +203,7 @@ void write_branch(Writer* w, PyObject* container, unsigned int& index, const uns
   // custom
   else if (w->check_custom(obj, custom_index)) {
     write_length(w, TYPE_SMALL_CUSTOM, custom_index);
-    PyTuple_SetItem(custom_dumper_args, 0, obj);
-    PyObject* c_data = PyObject_CallObject(w->custom_dumpers[custom_index], custom_dumper_args);
+    PyObject* c_data = PyObject_CallFunctionObjArgs(w->custom_dumpers[custom_index], obj, nullptr);
     w->write_obj(c_data);
   }
 
@@ -243,8 +252,7 @@ void write_branch(Writer* w, PyObject* container, unsigned int& index, const uns
     // datetime
     if (o_class == datetime_class) {
 
-      PyTuple_SetItem(pack_datetime_func_args, 0, obj);
-      auto dt_get = PyObject_CallObject(pack_datetime_func, pack_datetime_func_args);
+      auto dt_get = PyObject_CallFunctionObjArgs(pack_datetime_func, obj, nullptr);
 
       if (PyFloat_Check(dt_get)) {
         double value = PyFloat_AS_DOUBLE(dt_get);
@@ -259,8 +267,7 @@ void write_branch(Writer* w, PyObject* container, unsigned int& index, const uns
 
     // timedelta
     else if (o_class == timedelta_class) {
-      PyTuple_SetItem(pack_timedelta_func_args, 0, obj);
-      auto td_get = PyObject_CallObject(pack_timedelta_func, pack_timedelta_func_args);
+      auto td_get = PyObject_CallFunctionObjArgs(pack_timedelta_func, obj, nullptr);
       if (PyFloat_Check(td_get)) {
         double value = PyFloat_AS_DOUBLE(td_get);
         write_num<unsigned char>(w, TYPE_PRECISE_TIMEDELTA, 1);
@@ -304,8 +311,7 @@ void write_branch(Writer* w, PyObject* container, unsigned int& index, const uns
 
       // pickle
       else {
-        PyTuple_SetItem(pickle_dump_func_args, 0, obj);
-        auto p_get = PyObject_CallObject(pickle_dump_func, pickle_dump_func_args);
+        auto p_get = PyObject_CallFunctionObjArgs(pickle_dump_func, obj, nullptr);
         const char* p_str = PyBytes_AsString(p_get);
         unsigned int length = PyBytes_GET_SIZE(p_get);
         write_length(w, TYPE_SMALL_PICKLED, length);
@@ -396,4 +402,35 @@ void write_str(Writer* w, const char type, const char* str, const unsigned int l
   write_num<unsigned char>(w, type, 1);
   write_num<str_size_type>(w, len, str_size);
   w->write(str, len);
+};
+
+// maintainence
+void Writer::_init() {
+
+  // classes
+  this->class_count = 1;
+  this->classes = std::unordered_map<std::string, unsigned int>();
+
+  // points
+  for (unsigned int p_index = 0; p_index < this->point_count - 1; p_index++)
+    Py_XDECREF(this->all_points[p_index]);
+  this->all_points = py_vector();
+  this->points = py_obj_uint_map();
+  this->point_count = 1;
+
+  // customs
+  for (unsigned int c_index = 0; c_index < this->custom_count - 1; c_index++)
+    Py_XDECREF(this->all_customs[c_index]);
+  this->all_customs = py_vector();
+  this->customs = py_obj_uint_map();
+  this->custom_dumpers = std::unordered_map<unsigned int, PyObject*>();
+  this->custom_count = 1;
+
+  // refrs
+  for (unsigned int r_index = 0; r_index < this->refr_count - 1; r_index++)
+    Py_XDECREF(this->all_refrs[r_index]);
+  this->all_refrs = py_vector();
+  this->refr_indices = py_obj_uint_map();
+  this->refr_count = 1;
+
 };

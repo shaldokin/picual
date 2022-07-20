@@ -9,29 +9,35 @@ class Writer {
     unsigned int get_class(PyObject* cls);
 
     // points
-    std::unordered_map<PyObject*, unsigned int> points;
+    py_vector all_points;
+    py_obj_uint_map points;
     unsigned int point_count = 1;
     const int check_point(PyObject* obj, unsigned int& point_index);
 
     // custom
-    std::unordered_map<PyObject*, unsigned int> customs;
+    py_vector all_customs;
+    py_obj_uint_map customs;
     std::unordered_map<unsigned int, PyObject*> custom_dumpers;
     unsigned int custom_count = 1;
     const int check_custom(PyObject* obj, unsigned int& custom_index);
 
     // references
-    std::unordered_map<PyObject*, unsigned int> refr_indices;
+    py_vector all_refrs;
+    py_obj_uint_map refr_indices;
     unsigned int refr_count = 1;
     const int check_refr(PyObject* obj, unsigned int& refr_id);
 
     // state
     PyObject* obj = Py_None;
 
-    // funcationality
+    // functionality
     virtual void write(const char* data, const unsigned int len);
     void write_obj(PyObject* obj);
     virtual PyObject* to_bytes();
     void write_bytes(PyObject* obj);
+
+    // private
+    void _init();
 
 };
 

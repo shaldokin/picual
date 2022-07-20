@@ -204,7 +204,9 @@ void read_next(Reader* r, const bool is_gen, const unsigned char c_type, PyObjec
     c_name[c_len] = 0;
 
     unsigned int c_id = r->custom_count;
-    PyObject* c_obj = PyObject_CallFunctionObjArgs(get_obj_from_refr, PyUnicode_FromStringAndSize(c_name, c_len), nullptr);
+    PyObject* str_arg = PyUnicode_FromStringAndSize(c_name, c_len);
+    PyObject* c_obj = PyObject_CallFunctionObjArgs(get_obj_from_refr, str_arg, nullptr);
+    Py_DECREF(str_arg);
     r->custom_loaders[c_id] = custom_loader_func_by_class[c_obj];
     r->custom_count++;
 
@@ -472,14 +474,14 @@ PyObject* read_from_branch(Reader* r, const unsigned char branch) {
   // datetime
   else if (branch == TYPE_DATETIME) {
     PyObject* ts_value = PyLong_FromLong(read_num<unsigned int>(r, 4));
-    PyTuple_SetItem(unpack_datetime_func_args, 0, ts_value);
-    PyObject* dt_out = PyObject_CallObject(unpack_datetime_func, unpack_datetime_func_args);
+    PyObject* dt_out = PyObject_CallFunctionObjArgs(unpack_datetime_func, ts_value, nullptr);
+    Py_DECREF(ts_value);
     r->add_point(dt_out);
     return dt_out;
   } else if (branch == TYPE_PRECISE_DATETIME) {
     PyObject* ts_value = PyFloat_FromDouble(read_num<double>(r, 8));
-    PyTuple_SetItem(unpack_datetime_func_args, 0, ts_value);
-    PyObject* dt_out = PyObject_CallObject(unpack_datetime_func, unpack_datetime_func_args);
+    PyObject* dt_out = PyObject_CallFunctionObjArgs(unpack_datetime_func, ts_value, nullptr);
+    Py_DECREF(ts_value);
     r->add_point(dt_out);
     return dt_out;
   }
@@ -487,14 +489,14 @@ PyObject* read_from_branch(Reader* r, const unsigned char branch) {
   // timedelta
   else if (branch == TYPE_PRECISE_TIMEDELTA) {
     PyObject* td_value = PyLong_FromLong(read_num<double>(r, 8));
-    PyTuple_SetItem(unpack_timedelta_func_args, 0, td_value);
-    PyObject* td_out = PyObject_CallObject(unpack_timedelta_func, unpack_timedelta_func_args);
+    PyObject* td_out = PyObject_CallFunctionObjArgs(unpack_timedelta_func, td_value, nullptr);
+    Py_DECREF(td_value);
     r->add_point(td_out);
     return td_out;
   } else if (branch >= TYPE_SMALL_TIMEDELTA && branch <= TYPE_LONG_TIMEDELTA) {
     PyObject* td_value = PyLong_FromLong(read_length(r, branch, TYPE_SMALL_TIMEDELTA));
-    PyTuple_SetItem(unpack_timedelta_func_args, 0, td_value);
-    PyObject* td_out = PyObject_CallObject(unpack_timedelta_func, unpack_timedelta_func_args);
+    PyObject* td_out = PyObject_CallFunctionObjArgs(unpack_timedelta_func, td_value, nullptr);
+    Py_DECREF(td_value);
     r->add_point(td_out);
     return td_out;
   }
@@ -508,8 +510,8 @@ PyObject* read_from_branch(Reader* r, const unsigned char branch) {
     PyObject* c_name_py = PyUnicode_FromString(c_name.c_str());
 
     // create new object
-    PyTuple_SetItem(unpack_object_func_args, 0, c_name_py);
-    PyObject* o_out = PyObject_CallObject(unpack_object_func, unpack_object_func_args);
+    PyObject* o_out = PyObject_CallFunctionObjArgs(unpack_object_func, c_name_py, nullptr);
+    Py_DECREF(c_name_py);
     r->add_point(o_out);
 
     // load the state
@@ -531,8 +533,8 @@ PyObject* read_from_branch(Reader* r, const unsigned char branch) {
     unsigned int str_len;
     read_str(str_val, str_len, r, branch, TYPE_SMALL_PICKLED);
     PyObject* p_bytes = PyBytes_FromStringAndSize(str_val, str_len);
-    PyTuple_SetItem(pickle_load_func_args, 0, p_bytes);
-    PyObject* p_obj = PyObject_CallObject(pickle_load_func, pickle_load_func_args);
+    PyObject* p_obj = PyObject_CallFunctionObjArgs(pickle_load_func, p_bytes, nullptr);
+    Py_DECREF(p_bytes);
     r->add_point(p_obj);
     free((void*)str_val);
     return p_obj;
@@ -564,7 +566,9 @@ PyObject* read_from_branch(Reader* r, const unsigned char branch) {
     read_next(r, false, 0, o_state, o_index);
 
     // return the object
-    return PyObject_CallFunctionObjArgs(c_loader, o_state, nullptr);
+    PyObject* obj_return = PyObject_CallFunctionObjArgs(c_loader, o_state, nullptr);
+    Py_DECREF(o_state);
+    return obj_return;
 
   }
 
