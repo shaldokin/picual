@@ -82,7 +82,7 @@ void _store_refr(PyObject* name, PyObject* obj) {
   refr_objs[refr_name] = obj;
 };
 
-// util
+// tools
 void get_class_name(PyObject* cls, const char*& name, Py_ssize_t& len) {
   auto name_obj = PyObject_CallFunctionObjArgs(get_class_name_func, cls, nullptr);
   name = strdup((const char*)PyUnicode_DATA(name_obj));
@@ -158,3 +158,4 @@ void _init(PyObject* config) {
   reader_num_buffer = (char*)malloc(8);
 
 };
+

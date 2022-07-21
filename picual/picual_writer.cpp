@@ -24,13 +24,30 @@ void Writer::write(const char* data, const unsigned int len) {};
 
 void BuffWriter::write(const char* data, const unsigned int len) {
   this->buff = (char*)realloc(this->buff, this->size + len);
-  memcpy((void*)(((const char*)this->buff) + this->size), data, len);
+  #if __BYTE_ORDER__ == __ORDER_BIG_ENDIAN__
+    for (unsigned int w_cur = 0; w_cur < len; w_cur++)
+      this->buff[w_cur] = data[len - 1 - (w_cur)];
+  #else
+    memcpy((void*)(((const char*)this->buff) + this->size), data, len);
+  #endif
   this->size += len;
 };
 
 void StreamWriter::write(const char* data, const unsigned int len) {
-  PyObject* to_write = PyBytes_FromStringAndSize(data, len);
+  PyObject* to_write;
+  #if __BYTE_ORDER__ == __ORDER_BIG_ENDIAN__
+    char* r_data = (char*)malloc(len);
+    for (unsigned int w_cur = 0; w_cur < len; w_cur++)
+      r_data[w_cur] = data[len - 1 - (w_cur)];
+    to_write = PyBytes_FromStringAndSize(r_data, len);
+  #else
+    to_write = PyBytes_FromStringAndSize(data, len);
+  #endif
   PyObject_CallMethodObjArgs(this->stream, write_name_obj, to_write, nullptr);
+  Py_CLEAR(to_write);
+  #if __BYTE_ORDER__ == __ORDER_BIG_ENDIAN__
+    free((void*)r_data);
+  #endif
 };
 
 void Writer::write_bytes(PyObject* obj) {
@@ -286,8 +303,10 @@ void write_branch(Writer* w, PyObject* container, unsigned int& index, const uns
         } else {
           unsigned long int l_value = value;
           write_num<unsigned char>(w, TYPE_LONG_TIMEDELTA, 1);
-          if (value < 0)
-            l_value = *((unsigned int*)(&value));
+          if (value < 0) {
+            auto l_value_ptr = (unsigned int*)(&value);
+            l_value = *l_value_ptr;
+          };
           write_num<unsigned long int>(w, l_value, 8);
         };
       }

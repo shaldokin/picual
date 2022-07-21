@@ -47,7 +47,6 @@ void ReaderGen::_init() {
   this->points_from_indices = std::unordered_map<unsigned int, PyObject*>();
 
   // detect generator type
-  PyObject* l_obj = Py_None;
   this->add_point(Py_None);
   unsigned char branch = read_num<unsigned char>(this, 1);
   if (branch >= TYPE_SMALL_LIST && branch <= TYPE_LONG_LIST) {
@@ -80,8 +79,10 @@ void BuffReaderGen::_init() {
 };
 
 void StreamReaderGen::_init() {
-  PyObject_CallMethodObjArgs(this->stream, seek_name_obj, PyLong_FromLong(0), nullptr);
+  PyObject* zero = PyLong_FromLong(0);
+  PyObject_CallMethodObjArgs(this->stream, seek_name_obj, zero, nullptr);
   ReaderGen::_init();
+  Py_CLEAR(zero);
 };
 
 // points
@@ -127,6 +128,8 @@ void StreamReader::read(char* buff, const unsigned int size) {
   PyObject* r_data = PyObject_CallMethodObjArgs(this->stream, read_name_obj, p_size, nullptr);
   char* bytes = PyBytes_AsString(r_data);
   memcpy(buff, bytes, size);
+  Py_CLEAR(p_size);
+  Py_CLEAR(r_data);
 };
 
 void StreamReaderGen::read(char* buff, const unsigned int size) {
@@ -134,6 +137,8 @@ void StreamReaderGen::read(char* buff, const unsigned int size) {
   PyObject* r_data = PyObject_CallMethodObjArgs(this->stream, read_name_obj, p_size, nullptr);
   char* bytes = PyBytes_AsString(r_data);
   memcpy(buff, bytes, size);
+  Py_CLEAR(p_size);
+  Py_CLEAR(r_data);
 };
 
 PyObject* Reader::read_obj() {
@@ -182,7 +187,6 @@ void read_next(Reader* r, const bool is_gen, const unsigned char c_type, PyObjec
 
   // get branch
   unsigned char branch = read_num<unsigned char>(r, 1);
-  PyObject* custom_loader;
 
   // class definition?
   if (branch == TYPE_DEFINE_CLASS) {
@@ -523,6 +527,7 @@ PyObject* read_from_branch(Reader* r, const unsigned char branch) {
     PyObject_CallMethodObjArgs(o_out, set_state_obj, o_state, nullptr);
 
     // finished!
+    Py_DECREF(o_state);
     return o_out;
 
   }
