@@ -60,6 +60,12 @@ ReaderGen* _loadgs(PyObject* py_data) {
 
 };
 
+PyObject* _front_of_buffer_gen(Py_ssize_t size) {
+  BuffWriter writer;
+  write_length(&writer, TYPE_SMALL_LIST, size);
+  return writer.to_bytes();
+}
+
 // network
 void _open_dump_gen(Writer* w) {
   write_num<unsigned char>(w, TYPE_LONG_LIST, 1);

@@ -4,15 +4,13 @@
 
 # import dependencies
 import datetime, hashlib, importlib, pickle
-import threading, socket, struct, sys, time
+import threading, socket, sys, time
 
 # extern
 cdef extern from "picual_c.cpp":
 
     _test()
     void print_rcount(obj)
-
-    cdef int TYPE_LONG_LIST
 
     cdef cppclass Reader:
         pass
@@ -43,6 +41,8 @@ cdef extern from "picual_c.cpp":
     _loads(data)
     ReaderGen* _loadg(data)
     ReaderGen* _loadgs(data)
+
+    bytes _front_of_buffer_gen(int size)
 
     void _init(config)
     void _store_refr(name, obj)
@@ -97,7 +97,7 @@ cdef class PicualDumpGen:
         if self.is_stream:
             return b''
         else:
-            return struct.pack('<BQ', TYPE_LONG_LIST, self.count) + self.writer.to_bytes()
+            return _front_of_buffer_gen(self.count) + self.writer.to_bytes()
 
     @property
     def redumped(self):

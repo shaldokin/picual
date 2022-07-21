@@ -34,6 +34,7 @@ PyObject* _load(PyObject* stream);
 PyObject* _loads(PyObject* data);
 ReaderGen* _loadg(PyObject* file);
 ReaderGen* _loadgs(PyObject* data);
+PyObject* _front_of_buffer_gen(Py_ssize_t size);
 
 // tools
 void get_class_name(PyObject* obj, const char*& name, Py_ssize_t& len);
