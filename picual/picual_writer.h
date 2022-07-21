@@ -77,7 +77,7 @@ class StreamWriter : public Writer {
 // writing helper functions
 void write_branch(Writer* w, PyObject* container, unsigned int& index, const unsigned int size, py_get_function get, PyObject* obj);
 
-void write_int(Writer* w, const unsigned char branch, long int value);
+void write_int(Writer* w, const unsigned char branch, Py_ssize_t value);
 
 void write_length(Writer* w, const unsigned char branch, const unsigned int length);
 

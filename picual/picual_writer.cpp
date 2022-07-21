@@ -35,7 +35,7 @@ void StreamWriter::write(const char* data, const unsigned int len) {
 
 void Writer::write_bytes(PyObject* obj) {
   char* b_str;
-  long int b_size;
+  Py_ssize_t b_size;
   PyBytes_AsStringAndSize(obj, &b_str, &b_size);
   this->write(b_str, b_size);
 };
@@ -84,7 +84,7 @@ const int Writer::check_custom(PyObject* obj, unsigned int& custom_index) {
 
       // get name of class
       const char* name_str;
-      long int name_len;
+      Py_ssize_t name_len;
       get_class_name(obj, name_str, name_len);
 
       // define class
@@ -112,7 +112,7 @@ unsigned int Writer::get_class(PyObject* cls) {
 
   // get name
   const char* name_str;
-  long int name_len;
+  Py_ssize_t name_len;
   get_class_name(cls, name_str, name_len);
 
   // get/make index
@@ -166,7 +166,7 @@ void write_branch(Writer* w, PyObject* container, unsigned int& index, const uns
 
   // integers
   else if (PyLong_Check(obj)) {
-    long int value = PyLong_AsLong(obj);
+    Py_ssize_t value = PyLong_AsLong(obj);
     write_int(w, TYPE_BYTE, value);
 
   // float
@@ -259,7 +259,7 @@ void write_branch(Writer* w, PyObject* container, unsigned int& index, const uns
         write_num<unsigned char>(w, TYPE_PRECISE_DATETIME, 1);
         write_num<double>(w, value, 8);
       } else {
-        long int value = PyLong_AsLong(dt_get);
+        Py_ssize_t value = PyLong_AsLong(dt_get);
         write_num<unsigned char>(w, TYPE_DATETIME, 1);
         write_num<unsigned int>(w, value, 4);
       }
@@ -273,7 +273,7 @@ void write_branch(Writer* w, PyObject* container, unsigned int& index, const uns
         write_num<unsigned char>(w, TYPE_PRECISE_TIMEDELTA, 1);
         write_num<double>(w, value, 8);
       } else {
-        long int value = PyLong_AsLong(td_get);
+        Py_ssize_t value = PyLong_AsLong(td_get);
         if (value < 256) {
           write_num<unsigned char>(w, TYPE_SMALL_TIMEDELTA, 1);
           write_num<unsigned char>(w, value, 1);
@@ -344,7 +344,7 @@ void write_branch(Writer* w, PyObject* container, unsigned int& index, const uns
 
 };
 
-void write_int(Writer* w, const unsigned char branch, long int value) {
+void write_int(Writer* w, const unsigned char branch, Py_ssize_t value) {
   if (value < 0) {
     if (value > -128) {
       write_num<unsigned char>(w, branch, 1);

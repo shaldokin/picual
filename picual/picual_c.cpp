@@ -34,7 +34,7 @@ PyObject* _loads(PyObject* py_data) {
 
   // get data from python
   char* data;
-  long int d_len;
+  Py_ssize_t d_len;
   PyBytes_AsStringAndSize(py_data, &data, &d_len);
 
   // read object from buffer
@@ -51,7 +51,7 @@ ReaderGen* _loadgs(PyObject* py_data) {
 
   // get data
   char* data;
-  long int d_len;
+  Py_ssize_t d_len;
   PyBytes_AsStringAndSize(py_data, &data, &d_len);
 
   // create reader
@@ -83,7 +83,7 @@ void _store_refr(PyObject* name, PyObject* obj) {
 };
 
 // util
-void get_class_name(PyObject* cls, const char*& name, long int& len) {
+void get_class_name(PyObject* cls, const char*& name, Py_ssize_t& len) {
   auto name_obj = PyObject_CallFunctionObjArgs(get_class_name_func, cls, nullptr);
   name = strdup((const char*)PyUnicode_DATA(name_obj));
   len = PyUnicode_GET_LENGTH(name_obj);

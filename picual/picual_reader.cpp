@@ -278,7 +278,7 @@ void read_next(Reader* r, const bool is_gen, const unsigned char c_type, PyObjec
 
       // normal
       else {
-        long int r_value = PyLong_AsLong(r->last);
+        Py_ssize_t r_value = PyLong_AsLong(r->last);
         for (unsigned int r_index = 0; r_index < r_length; r_index++)
           add_obj_to_reader(PyLong_FromLong(r_value), r, is_gen, c_type, cont, index);
       };
@@ -296,7 +296,7 @@ void read_next(Reader* r, const bool is_gen, const unsigned char c_type, PyObjec
 
       // normal
       else {
-        long int r_str_len = 0;
+        Py_ssize_t r_str_len = 0;
         const char* r_value = PyUnicode_AsUTF8AndSize(gen->last, &r_str_len);
         for (unsigned int r_index = 0; r_index < r_length; r_index++)
           add_obj_to_reader(PyUnicode_FromStringAndSize(r_value, r_str_len), r, is_gen, c_type, cont, index);
@@ -320,7 +320,7 @@ void read_next(Reader* r, const bool is_gen, const unsigned char c_type, PyObjec
 
       // normal
       else {
-        long int r_str_len = 0;
+        Py_ssize_t r_str_len = 0;
         char* r_value;
         PyBytes_AsStringAndSize(gen->last, &r_value, &r_str_len);
         for (unsigned int r_index = 0; r_index < r_length; r_index++)
@@ -405,7 +405,7 @@ PyObject* read_from_branch(Reader* r, const unsigned char branch) {
     unsigned int value = read_num<unsigned int>(r, 4);
     return PyLong_FromLong(value);
   } else if (branch == TYPE_LONG) {
-    long int value = read_num<long int>(r, 8);
+    Py_ssize_t value = read_num<long int>(r, 8);
     return PyLong_FromLong(value);
   } else if (branch == TYPE_ULONG) {
     unsigned long int value = read_num<unsigned long int>(r, 8);

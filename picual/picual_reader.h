@@ -75,14 +75,14 @@ class ReaderGen : public Reader {
     unsigned int g_index = 0;
     long unsigned int g_repeat;
     unsigned int g_length;
-    long int g_complete = 0;
+    Py_ssize_t g_complete = 0;
 
     char r_type = TYPE_NONE;
     long unsigned int r_length;
     double r_float = 0.0f;
-    long int r_int;
+    Py_ssize_t r_int;
     const char* r_str = nullptr;
-    long int r_str_len = 0;
+    Py_ssize_t r_str_len = 0;
     PyObject* r_obj;
 
     ReaderGen();

@@ -36,7 +36,7 @@ ReaderGen* _loadg(PyObject* file);
 ReaderGen* _loadgs(PyObject* data);
 
 //
-void get_class_name(PyObject* obj, const char*& name, long int& len);
+void get_class_name(PyObject* obj, const char*& name, Py_ssize_t& len);
 
 // custom
 std::unordered_map<PyObject*, PyObject*> custom_dumper_func_by_class;
@@ -55,7 +55,7 @@ void _store_refr(PyObject* name, PyObject* obj);
 
 // dump gen
 void _open_dump_gen(Writer* w);
-void _close_close_gen(Writer* w, const long int count);
+void _close_close_gen(Writer* w, const Py_ssize_t count);
 
 // customization
 PyObject* before_dump_func = nullptr;
