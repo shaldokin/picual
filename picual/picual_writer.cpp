@@ -325,6 +325,7 @@ void write_branch(Writer* w, PyObject* container, unsigned int& index, const uns
         // write state
         auto g_state = PyObject_CallMethodObjArgs(obj, get_state_obj, nullptr);
         w->write_obj(g_state);
+        Py_DECREF(g_state);
 
       }
 

@@ -9,7 +9,8 @@ import threading, socket, sys, time
 # extern
 cdef extern from "picual_c.cpp":
 
-    _test()
+
+    void _test()
     void print_rcount(obj)
 
     cdef cppclass Reader:
@@ -87,6 +88,7 @@ cdef class PicualDumpGen:
 
     def __del__(self):
         self.close()
+        del self.writer
 
     def dump(self, obj):
         self.count += 1
@@ -360,6 +362,9 @@ cpdef loadgs(bytes data):
     if gen.reader.is_wrong_type:
         raise TypeError('You can only load a generator from a list, tuple, or dictionary')
     return gen
+
+cpdef test():
+    _test()
 
 # initialize
 _init(picual_config)

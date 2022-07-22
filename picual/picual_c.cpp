@@ -9,6 +9,12 @@ void print(PyObject* obj) {
   std::cout << (const char*)PyUnicode_DATA(PyObject_Repr(obj)) << "\n";
 };
 
+template <class p_type>
+void print(p_type text) {
+  std::cout << text << "\n";
+};
+
+
 void print_rcount(PyObject* obj) {
   std::cout << obj->ob_refcnt << "\n";
 };
@@ -165,3 +171,59 @@ void _init(PyObject* config) {
 
 };
 
+// dev
+void _test() {
+
+    const char* value = "ilikekake";
+
+    // list
+    print("LIST BEFORE ADDING");
+    auto cont1 = PyList_New(1);
+    print_rcount(cont1);
+
+    print("LIST ITEM BEFORE ADDING");
+    auto item1 = PyBytes_FromString(value);
+    print_rcount(item1);
+
+    PyList_SetItem(cont1, 0, item1);
+
+    print("LIST AFTER ADDING");
+    print_rcount(cont1);
+
+    print("LIST ITEM AFTER ADDING");
+    print_rcount(item1);
+
+    print("LIST ITEM WITHIN LIST");
+    print_rcount(PyList_GetItem(cont1, 0));
+
+    print("LIST ITEM WITHIN LIST (AFTER DECR ITEM OUTSIDE OF LIST)");
+    Py_DECREF(item1);
+    print_rcount(PyList_GetItem(cont1, 0));
+
+    print("");
+
+    // tuple
+    print("TUPLE BEFORE ADDING");
+    auto cont2 = PyTuple_New(1);
+    print_rcount(cont2);
+
+    print("TUPLE ITEM BEFORE ADDING");
+    auto item2 = PyBytes_FromString(value);
+    print_rcount(item2);
+
+    PyTuple_SetItem(cont2, 0, item2);
+
+    print("TUPLE AFTER ADDING");
+    print_rcount(cont2);
+
+    print("TUPLE ITEM AFTER ADDING");
+    print_rcount(item2);
+
+    print("TUPLE ITEM WITHIN TUPLE");
+    print_rcount(PyTuple_GetItem(cont2, 0));
+
+    print("TUPLE ITEM WITHIN TUPLE (AFTER DECR ITEM OUTSIDE OF TUPLE)");
+    Py_DECREF(item2);
+    print_rcount(PyTuple_GetItem(cont2, 0));
+
+};

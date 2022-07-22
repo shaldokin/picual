@@ -210,7 +210,7 @@ void read_next(Reader* r, const bool is_gen, const unsigned char c_type, PyObjec
     unsigned int c_id = r->custom_count;
     PyObject* str_arg = PyUnicode_FromStringAndSize(c_name, c_len);
     PyObject* c_obj = PyObject_CallFunctionObjArgs(get_obj_from_refr, str_arg, nullptr);
-    Py_DECREF(str_arg);
+    Py_CLEAR(str_arg);
     r->custom_loaders[c_id] = custom_loader_func_by_class[c_obj];
     r->custom_count++;
 
@@ -259,14 +259,19 @@ void read_next(Reader* r, const bool is_gen, const unsigned char c_type, PyObjec
       if (is_gen) {
         gen->r_type = TYPE_FLOAT;
         gen->r_float = PyFloat_AsDouble(gen->last);
-        add_obj_to_reader(PyFloat_FromDouble(gen->r_float), r, is_gen, c_type, cont, index);
+        PyObject* n_value = PyFloat_FromDouble(gen->r_float);
+        add_obj_to_reader(n_value, r, is_gen, c_type, cont, index);
+        Py_DECREF(n_value);
       }
 
       // normal
       else {
         double r_value = PyFloat_AsDouble(r->last);
-        for (unsigned int r_index = 0; r_index < r_length; r_index++)
-          add_obj_to_reader(PyFloat_FromDouble(r_value), r, is_gen, c_type, cont, index);
+        for (unsigned int r_index = 0; r_index < r_length; r_index++) {
+          PyObject* n_value = PyFloat_FromDouble(r_value);
+          add_obj_to_reader(n_value, r, is_gen, c_type, cont, index);
+          Py_DECREF(n_value);
+        };
       };
     }
 
@@ -277,14 +282,19 @@ void read_next(Reader* r, const bool is_gen, const unsigned char c_type, PyObjec
       if (is_gen) {
         gen->r_type = TYPE_INT;
         gen->r_int = PyLong_AsLong(gen->last);
-        add_obj_to_reader(PyLong_FromLong(gen->r_int), r, is_gen, c_type, cont, index);
+        PyObject* n_value = PyLong_FromLong(gen->r_int);
+        add_obj_to_reader(n_value, r, is_gen, c_type, cont, index);
+        Py_DECREF(n_value);
       }
 
       // normal
       else {
         Py_ssize_t r_value = PyLong_AsLong(r->last);
-        for (unsigned int r_index = 0; r_index < r_length; r_index++)
-          add_obj_to_reader(PyLong_FromLong(r_value), r, is_gen, c_type, cont, index);
+        for (unsigned int r_index = 0; r_index < r_length; r_index++) {
+          PyObject* n_value = PyLong_FromLong(r_value);
+          add_obj_to_reader(n_value, r, is_gen, c_type, cont, index);
+          Py_DECREF(n_value);
+        };
       };
     }
 
@@ -295,15 +305,20 @@ void read_next(Reader* r, const bool is_gen, const unsigned char c_type, PyObjec
       if (is_gen) {
         gen->r_type = TYPE_SMALL_STRING;
         gen->r_str = PyUnicode_AsUTF8AndSize(gen->last, &(gen->r_str_len));
-        add_obj_to_reader(PyUnicode_FromStringAndSize(gen->r_str, gen->r_str_len), r, is_gen, c_type, cont, index);
+        PyObject* n_value = PyUnicode_FromStringAndSize(gen->r_str, gen->r_str_len);
+        add_obj_to_reader(n_value, r, is_gen, c_type, cont, index);
+        Py_DECREF(n_value);
       }
 
       // normal
       else {
         Py_ssize_t r_str_len = 0;
         const char* r_value = PyUnicode_AsUTF8AndSize(gen->last, &r_str_len);
-        for (unsigned int r_index = 0; r_index < r_length; r_index++)
-          add_obj_to_reader(PyUnicode_FromStringAndSize(r_value, r_str_len), r, is_gen, c_type, cont, index);
+        for (unsigned int r_index = 0; r_index < r_length; r_index++) {
+          PyObject* n_value = PyUnicode_FromStringAndSize(r_value, r_str_len);
+          add_obj_to_reader(n_value, r, is_gen, c_type, cont, index);
+          Py_DECREF(n_value);
+        };
       };
     }
 
@@ -319,7 +334,9 @@ void read_next(Reader* r, const bool is_gen, const unsigned char c_type, PyObjec
           free((void*)gen->r_str);
         gen->r_str = (const char*)malloc(gen->r_str_len);
         memcpy((char*)gen->r_str, r_str, gen->r_str_len);
-        add_obj_to_reader(PyBytes_FromStringAndSize(r_str, gen->r_str_len), r, is_gen, c_type, cont, index);
+        PyObject* n_value = PyBytes_FromStringAndSize(r_str, gen->r_str_len);
+        add_obj_to_reader(n_value, r, is_gen, c_type, cont, index);
+        Py_DECREF(n_value);
       }
 
       // normal
@@ -327,8 +344,11 @@ void read_next(Reader* r, const bool is_gen, const unsigned char c_type, PyObjec
         Py_ssize_t r_str_len = 0;
         char* r_value;
         PyBytes_AsStringAndSize(gen->last, &r_value, &r_str_len);
-        for (unsigned int r_index = 0; r_index < r_length; r_index++)
-          add_obj_to_reader(PyBytes_FromStringAndSize(r_value, r_str_len), r, is_gen, c_type, cont, index);
+        for (unsigned int r_index = 0; r_index < r_length; r_index++) {
+          PyObject* n_value = PyBytes_FromStringAndSize(r_value, r_str_len);
+          add_obj_to_reader(n_value, r, is_gen, c_type, cont, index);
+          Py_DECREF(n_value);
+        };
       };
     }
 
@@ -340,6 +360,7 @@ void read_next(Reader* r, const bool is_gen, const unsigned char c_type, PyObjec
         gen->r_type = TYPE_NONE;
         Py_INCREF(gen->last);
         add_obj_to_reader(gen->last, r, is_gen, c_type, cont, index);
+        Py_DECREF(gen->last);
       }
 
       // normal
@@ -357,6 +378,7 @@ void read_next(Reader* r, const bool is_gen, const unsigned char c_type, PyObjec
   else {
     auto load_obj = read_from_branch(r, branch);
     add_obj_to_reader(load_obj, r, is_gen, c_type, cont, index);
+    Py_DECREF(load_obj);
   };
 
 };
@@ -379,13 +401,16 @@ PyObject* read_from_branch(Reader* r, const unsigned char branch) {
 
   // none
   if (branch == TYPE_NONE) {
+    Py_INCREF(Py_None);
     return Py_None;
   }
 
   // bool
   else if (branch == TYPE_TRUE) {
+    Py_INCREF(Py_True);
     return Py_True;
   } else if (branch == TYPE_FALSE) {
+    Py_INCREF(Py_False);
     return Py_False;
   }
 
@@ -479,13 +504,13 @@ PyObject* read_from_branch(Reader* r, const unsigned char branch) {
   else if (branch == TYPE_DATETIME) {
     PyObject* ts_value = PyLong_FromLong(read_num<unsigned int>(r, 4));
     PyObject* dt_out = PyObject_CallFunctionObjArgs(unpack_datetime_func, ts_value, nullptr);
-    Py_DECREF(ts_value);
+    Py_CLEAR(ts_value);
     r->add_point(dt_out);
     return dt_out;
   } else if (branch == TYPE_PRECISE_DATETIME) {
     PyObject* ts_value = PyFloat_FromDouble(read_num<double>(r, 8));
     PyObject* dt_out = PyObject_CallFunctionObjArgs(unpack_datetime_func, ts_value, nullptr);
-    Py_DECREF(ts_value);
+    Py_CLEAR(ts_value);
     r->add_point(dt_out);
     return dt_out;
   }
@@ -494,13 +519,13 @@ PyObject* read_from_branch(Reader* r, const unsigned char branch) {
   else if (branch == TYPE_PRECISE_TIMEDELTA) {
     PyObject* td_value = PyLong_FromLong(read_num<double>(r, 8));
     PyObject* td_out = PyObject_CallFunctionObjArgs(unpack_timedelta_func, td_value, nullptr);
-    Py_DECREF(td_value);
+    Py_CLEAR(td_value);
     r->add_point(td_out);
     return td_out;
   } else if (branch >= TYPE_SMALL_TIMEDELTA && branch <= TYPE_LONG_TIMEDELTA) {
     PyObject* td_value = PyLong_FromLong(read_length(r, branch, TYPE_SMALL_TIMEDELTA));
     PyObject* td_out = PyObject_CallFunctionObjArgs(unpack_timedelta_func, td_value, nullptr);
-    Py_DECREF(td_value);
+    Py_CLEAR(td_value);
     r->add_point(td_out);
     return td_out;
   }
@@ -548,13 +573,16 @@ PyObject* read_from_branch(Reader* r, const unsigned char branch) {
   // refr
   else if (branch >= TYPE_SMALL_REFR && branch <= TYPE_LONG_REFR) {
     unsigned int r_id = read_length(r, branch, TYPE_SMALL_REFR);
-    return r->refrs[r_id];
+    PyObject* r_value = r->refrs[r_id];
+    Py_INCREF(r_value);
+    return r_value;
   }
 
   // point
   else if (branch >= TYPE_SMALL_POINT && branch <= TYPE_LONG_POINT) {
     unsigned int r_index = read_length(r, branch, TYPE_SMALL_POINT);
     PyObject* point = r->points_from_indices[r_index];
+    Py_INCREF(point);
     return point;
   }
 
@@ -575,13 +603,14 @@ PyObject* read_from_branch(Reader* r, const unsigned char branch) {
     Py_DECREF(o_state);
     return obj_return;
 
-  }
+  };
 
 }
 
 
 // generator
 PyObject* Reader::gen_next() {
+  Py_INCREF(Py_None);
   return Py_None;
 };
 
