@@ -26,9 +26,13 @@ cdef extern from "picual_c.cpp":
         pass
 
     cdef cppclass Writer:
+
         to_bytes()
         void write_bytes(obj)
         void write_obj(obj)
+        void write_start()
+
+        int store_points
 
     cdef cppclass BuffWriter(Writer):
         pass
@@ -36,8 +40,8 @@ cdef extern from "picual_c.cpp":
     cdef cppclass StreamWriter(Writer):
         StreamWriter(fileobj)
 
-    void _dump(obj, stream)
-    _dumps(obj)
+    void _dump(obj, stream, int store_points)
+    _dumps(obj, int store_points)
     _load(stream)
     _loads(data)
     ReaderGen* _loadg(data)
@@ -295,45 +299,53 @@ cpdef bytes store_refr_name(str name):
 picual_config['store_refr_name'] = store_refr_name
 
 # picual functionality
-cpdef dump(obj, stream):
-    _dump(obj, stream)
+cpdef dump(obj, stream, store_points=True):
+    _dump(obj, stream, store_points)
 
-cpdef bytes dumps(obj):
-    return _dumps(obj)
+cpdef bytes dumps(obj, store_points=True):
+    return _dumps(obj, store_points)
 
-cpdef dump_to(obj, str filename):
+cpdef dump_to(obj, str filename, store_points=True):
     with open(filename, 'wb') as dump_file:
-        _dump(obj, dump_file)
+        _dump(obj, dump_file, store_points)
 
-cpdef PicualDumpGen dumpg(fileobj):
+cpdef PicualDumpGen dumpg(fileobj, store_points=True):
     cdef PicualDumpGen dgen = PicualDumpGen(True)
     dgen.writer = new StreamWriter(fileobj)
+    dgen.writer.store_points = store_points
     _open_dump_gen(dgen.writer)
+    dgen.writer.write_start()
     return dgen
 
-cpdef PicualDumpGen dumpgs():
+cpdef PicualDumpGen dumpgs(store_points=True):
     cdef PicualDumpGen dgen = PicualDumpGen(False)
     dgen.writer = new BuffWriter()
+    dgen.writer.store_points = store_points
+    dgen.writer.write_start()
     return dgen
 
-cpdef PicualDumpGen dumpg_to(str filename):
-    return dumpg(open(filename, 'wb'))
+cpdef PicualDumpGen dumpg_to(str filename, store_points=True):
+    return dumpg(open(filename, 'wb'), store_points)
 
 cpdef PicualDumpNetConn dumpnc(str addr, int port):
     return PicualDumpNetConn(addr, port)
 
-cpdef PicualDumpNet dumpn(fileobj, str addr, int port, use_thread=False):
+cpdef PicualDumpNet dumpn(fileobj, str addr, int port, use_thread=False, store_points=True):
     cdef PicualDumpNet dnet = PicualDumpNet(True, addr, port, use_thread)
     dnet.writer = new StreamWriter(fileobj)
+    dnet.write.store_points = store_points
     _open_dump_gen(dnet.writer)
+    dnet.write_start()
     return dnet
 
-cpdef PicualDumpNet dumpn_to(str filename, str addr, int port, use_thread=False):
-    return dumpn(open(filename, 'wb'), addr, port, use_thread)
+cpdef PicualDumpNet dumpn_to(str filename, str addr, int port, use_thread=False, store_points=True):
+    return dumpn(open(filename, 'wb'), addr, port, use_thread, store_points)
 
-cpdef PicualDumpNet dumpns(str addr, int port, use_thread=False):
+cpdef PicualDumpNet dumpns(str addr, int port, use_thread=False, store_points=True):
     cdef PicualDumpNet dnet = PicualDumpNet(False, addr, port, use_thread)
     dnet.writer = new BuffWriter()
+    dnet.writer.store_points = store_points
+    dnet.writer.write_start()
     return dnet
 
 cpdef load(stream):

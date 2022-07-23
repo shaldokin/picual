@@ -9,6 +9,8 @@
 #include "picual_types.h"
 
 // debug
+template <class p_type>
+void print(p_type text);
 void print(PyObject* obj);
 void print_rcount(PyObject* obj);
 
@@ -28,8 +30,8 @@ typedef std::unordered_map<PyObject*, unsigned int> py_obj_uint_map;
 #include "picual_reader.h"
 
 // util
-void _dump(PyObject* obj, PyObject* stream);
-PyObject* _dumps(PyObject* obj);
+void _dump(PyObject* obj, PyObject* stream, bool store_points=true);
+PyObject* _dumps(PyObject* obj, bool store_points=true);
 PyObject* _load(PyObject* stream);
 PyObject* _loads(PyObject* data);
 ReaderGen* _loadg(PyObject* file);

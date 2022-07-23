@@ -42,6 +42,7 @@ void ReaderGen::_init() {
   this->refrs = std::unordered_map<unsigned int, PyObject*>();
 
   // reset points
+  this->store_points = true;
   this->point_count = 1;
   this->points = std::unordered_map<void*, unsigned int>();
   this->points_from_indices = std::unordered_map<unsigned int, PyObject*>();
@@ -87,16 +88,18 @@ void StreamReaderGen::_init() {
 
 // points
 void Reader::add_point(PyObject* obj, const unsigned int defp) {
-  unsigned int p_index = this->points[obj];
-  if (p_index == 0) {
-    if (defp == 0) {
-      p_index = this->point_count;
-      this->point_count++;
-    } else
-      p_index = defp;
-    Py_INCREF(obj);
-    this->points[obj] = p_index;
-    this->points_from_indices[p_index] = obj;
+  if (this->store_points) {
+    unsigned int p_index = this->points[obj];
+    if (p_index == 0) {
+      if (defp == 0) {
+        p_index = this->point_count;
+        this->point_count++;
+      } else
+        p_index = defp;
+      Py_INCREF(obj);
+      this->points[obj] = p_index;
+      this->points_from_indices[p_index] = obj;
+    };
   };
 };
 
@@ -188,8 +191,14 @@ void read_next(Reader* r, const bool is_gen, const unsigned char c_type, PyObjec
   // get branch
   unsigned char branch = read_num<unsigned char>(r, 1);
 
+  // don't store refrs?
+  if (branch == TYPE_SETTING_DONT_STORE_POINTS) {
+    r->store_points = false;
+    read_next(r, is_gen, c_type, cont, index);
+  }
+
   // class definition?
-  if (branch == TYPE_DEFINE_CLASS) {
+  else if (branch == TYPE_DEFINE_CLASS) {
     unsigned char c_len = read_num<unsigned char>(r, 1);
     char* c_name = (char*)malloc(c_len + 1);
     r->read(c_name, c_len);

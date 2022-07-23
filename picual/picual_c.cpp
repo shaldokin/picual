@@ -20,13 +20,17 @@ void print_rcount(PyObject* obj) {
 };
 
 // functionality
-void _dump(PyObject* obj, PyObject* stream) {
+void _dump(PyObject* obj, PyObject* stream, bool store_points) {
   StreamWriter writer(stream);
+  writer.store_points = store_points;
+  writer.write_start();
   writer.write_obj(obj);
 };
 
-PyObject* _dumps(PyObject* obj) {
+PyObject* _dumps(PyObject* obj, bool store_points) {
   BuffWriter writer;
+  writer.store_points = store_points;
+  writer.write_start();
   writer.write_obj(obj);
   return writer.to_bytes();
 };

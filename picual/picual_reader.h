@@ -14,16 +14,15 @@ class Reader {
     unsigned int get_class(const char* class_name);
 
     // points
+    bool store_points = true;
     std::unordered_map<void*, unsigned int> points;
     std::unordered_map<unsigned int, PyObject*> points_from_indices;
     unsigned int point_count = 1;
     void add_point(PyObject* obj, const unsigned int defp=0);
 
     // custom
-    std::unordered_map<PyObject*, unsigned int> customs;
     std::unordered_map<unsigned int, PyObject*> custom_loaders;
     unsigned int custom_count = 1;
-    PyObject* get_custom(const char name);
 
     // references
     std::unordered_map<unsigned int, PyObject*> refrs;

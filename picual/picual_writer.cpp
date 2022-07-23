@@ -20,6 +20,11 @@ StreamWriter::~StreamWriter() {
 };
 
 // write
+void Writer::write_start() {
+  if (!this->store_points)
+    write_num<unsigned char>(this, TYPE_SETTING_DONT_STORE_POINTS, 1);
+};
+
 void Writer::write(const char* data, const unsigned int len) {};
 
 void BuffWriter::write(const char* data, const unsigned int len) {
@@ -118,6 +123,7 @@ const int Writer::check_custom(PyObject* obj, unsigned int& custom_index) {
       this->all_customs.push_back(obj);
 
       // finished!
+      free((void*)name_str);
       return 1;
     }
   } else
@@ -145,22 +151,26 @@ unsigned int Writer::get_class(PyObject* cls) {
   };
 
   // finished!
+  free((void*)name_str);
   return c_index;
 
 };
 
 // points
 const int Writer::check_point(PyObject* obj, unsigned int& point_index) {
-  point_index = this->points[obj];
-  if (point_index == 0) {
-    point_index = this->point_count;
-    Py_XINCREF(obj);
-    this->all_points.push_back(obj);
-    this->points[obj] = point_index;
-    this->point_count++;
-    return 0;
+  if (this->store_points) {
+    point_index = this->points[obj];
+    if (point_index == 0) {
+      point_index = this->point_count;
+      Py_XINCREF(obj);
+      this->all_points.push_back(obj);
+      this->points[obj] = point_index;
+      this->point_count++;
+      return 0;
+    } else
+      return 1;
   } else
-    return 1;
+    return 0;
 };
 
 // writing helper functions

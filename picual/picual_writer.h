@@ -9,6 +9,7 @@ class Writer {
     unsigned int get_class(PyObject* cls);
 
     // points
+    bool store_points = true;
     py_vector all_points;
     py_obj_uint_map points;
     unsigned int point_count = 1;
@@ -35,6 +36,7 @@ class Writer {
     void write_obj(PyObject* obj);
     virtual PyObject* to_bytes();
     void write_bytes(PyObject* obj);
+    void write_start();
 
     // private
     void _init();
