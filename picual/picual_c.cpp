@@ -138,6 +138,9 @@ PyObject* before_dump(PyObject* data) {
 // integration
 void _init(PyObject* config) {
 
+  int etv = 1;
+  is_big_endian = !*((char*)&etv);
+
   eq_name = PyUnicode_FromString("__eq__");
   datetime_to_timestamp_name = PyUnicode_FromString("timestamp");
   get_class_name_name = "__class__";

@@ -29,30 +29,28 @@ void Writer::write(const char* data, const unsigned int len) {};
 
 void BuffWriter::write(const char* data, const unsigned int len) {
   this->buff = (char*)realloc(this->buff, this->size + len);
-  #if __BYTE_ORDER__ == __ORDER_BIG_ENDIAN__
+  if (is_big_endian) {
     for (unsigned int w_cur = 0; w_cur < len; w_cur++)
       this->buff[w_cur] = data[len - 1 - (w_cur)];
-  #else
+  } else
     memcpy((void*)(((const char*)this->buff) + this->size), data, len);
-  #endif
   this->size += len;
 };
 
 void StreamWriter::write(const char* data, const unsigned int len) {
   PyObject* to_write;
-  #if __BYTE_ORDER__ == __ORDER_BIG_ENDIAN__
-    char* r_data = (char*)malloc(len);
+  char* r_data = 0;
+  if (is_big_endian) {
+    r_data = (char*)malloc(len);
     for (unsigned int w_cur = 0; w_cur < len; w_cur++)
       r_data[w_cur] = data[len - 1 - (w_cur)];
     to_write = PyBytes_FromStringAndSize(r_data, len);
-  #else
+  } else
     to_write = PyBytes_FromStringAndSize(data, len);
-  #endif
   PyObject_CallMethodObjArgs(this->stream, write_name_obj, to_write, nullptr);
   Py_CLEAR(to_write);
-  #if __BYTE_ORDER__ == __ORDER_BIG_ENDIAN__
+  if (is_big_endian)
     free((void*)r_data);
-  #endif
 };
 
 void Writer::write_bytes(PyObject* obj) {

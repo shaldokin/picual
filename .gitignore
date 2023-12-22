@@ -10,3 +10,4 @@ venv
 picual/picual.cpp
 build
 test.pkl
+setup2.py

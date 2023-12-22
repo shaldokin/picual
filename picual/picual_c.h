@@ -8,6 +8,9 @@
 #include <utility>
 #include "picual_types.h"
 
+// sys
+bool is_big_endian = false;
+
 // debug
 template <class p_type>
 void print(p_type text);
