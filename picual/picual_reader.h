@@ -89,6 +89,7 @@ class ReaderGen : public Reader {
     PyObject* gen_next();
     void reset();
     virtual void _init();
+    virtual void close();
 };
 
 class BuffReaderGen : public ReaderGen {
@@ -111,6 +112,7 @@ class StreamReaderGen : public ReaderGen {
     StreamReaderGen(PyObject* stream);
     void read(char* buff, const unsigned int size);
     virtual void _init();
+    virtual void close();
 
 };
 

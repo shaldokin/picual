@@ -8,7 +8,6 @@ import threading, socket, sys, time
 # extern
 cdef extern from "picual_c.cpp":
 
-
     void _test()
     void print_rcount(obj)
 
@@ -20,6 +19,7 @@ cdef extern from "picual_c.cpp":
         int g_complete
         gen_next()
         void reset()
+        void close()
 
     cdef cppclass BuffReaderGen(ReaderGen):
         pass
@@ -63,7 +63,7 @@ cdef extern from "picual_c.cpp":
 cdef dict picual_config = {}
 
 # generator
-cdef class PicualLoadGenerator:
+cdef class PicualLoadGenerator(object):
 
     cdef ReaderGen* reader
 
@@ -77,6 +77,9 @@ cdef class PicualLoadGenerator:
         while self.reader.g_complete == 0:
             yield self.reader.gen_next()
         self.reader.reset()
+
+    cpdef close(self):
+        self.reader.close()
 
 # gen
 cdef class PicualDumpGen:

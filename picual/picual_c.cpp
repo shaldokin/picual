@@ -89,7 +89,6 @@ void _close_dump_gen(Writer* w, const long int count) {
 };
 
 
-
 // references
 void _store_refr(PyObject* name, PyObject* obj) {
   char* refr_name = PyBytes_AsString(name);

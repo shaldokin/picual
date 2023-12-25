@@ -70,6 +70,8 @@ void ReaderGen::_init() {
 
 };
 
+void ReaderGen::close() {};
+
 void ReaderGen::reset() {
   this->_init();
 };
@@ -84,6 +86,10 @@ void StreamReaderGen::_init() {
   PyObject_CallMethodObjArgs(this->stream, seek_name_obj, zero, nullptr);
   ReaderGen::_init();
   Py_CLEAR(zero);
+};
+
+void StreamReaderGen::close() {
+  PyObject_CallMethodObjArgs(this->stream, close_name_obj, nullptr);
 };
 
 // points

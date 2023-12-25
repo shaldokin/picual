@@ -61,13 +61,12 @@ void _store_refr(PyObject* name, PyObject* obj);
 
 // dump gen
 void _open_dump_gen(Writer* w);
-void _close_close_gen(Writer* w, const Py_ssize_t count);
+//void _close_dump_gen(Writer* w, const Py_ssize_t count);
 
 // customization
 PyObject* before_dump_func = nullptr;
 PyObject* before_dump(PyObject* data);
 void _set_before_dump(PyObject* func);
-
 
 // integration
 PyObject* eq_name;
